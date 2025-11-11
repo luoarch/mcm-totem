@@ -1,0 +1,8 @@
+{
+  "name": "totem",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "packageManager": "yarn@1.22.22"
+}
