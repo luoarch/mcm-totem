@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FormProvider, useForm, useWatch, type Resolver } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
-import { Alert, Button, Stack } from '@mui/material'
+import { Alert, Box, Button, Stack } from '@mui/material'
 import { KioskLayout } from '../../layouts/KioskLayout'
 import {
   ConfirmationStep,
@@ -14,6 +14,7 @@ import {
   ReasonStep,
   StepNavigation,
   SpecialtyStep,
+  WelcomeStep,
 } from './components'
 import {
   DEFAULT_FORM_VALUES,
@@ -263,15 +264,8 @@ export function IntakeFlow({ onComplete }: IntakeFlowProps) {
   }, [coverageType, defaultConvenioId, methods])
 
   const handleTimeoutReset = useCallback(() => {
-    methods.reset(DEFAULT_FORM_VALUES)
-    setMatches([])
-    setLookupStatus('idle')
-    setActiveStep(0)
-    setSubmitError(null)
-    setIsSubmitting(false)
-    setWasResetByTimeout(true)
-    setConfirmation(null)
-  }, [methods])
+    window.location.reload()
+  }, [])
 
   const { resetTimer: resetInactivityTimer } = useInactivityTimeout({
     timeoutMs: INACTIVITY_TIMEOUT_MS,
@@ -449,6 +443,11 @@ export function IntakeFlow({ onComplete }: IntakeFlowProps) {
     setActiveStep(0)
   }
 
+  const handleWelcomeStart = useCallback(() => {
+    resetInactivityTimer()
+    setActiveStep(1)
+  }, [resetInactivityTimer])
+
   const handleNext = async () => {
     resetInactivityTimer()
     setSubmitError(null)
@@ -476,8 +475,6 @@ export function IntakeFlow({ onComplete }: IntakeFlowProps) {
     setActiveStep((prev) => Math.min(prev + 1, steps.length - 1))
   }
 
-  const aside = null
-
   const footer = (
     <Stack spacing={2} width="100%">
       {submitError ? (
@@ -485,25 +482,27 @@ export function IntakeFlow({ onComplete }: IntakeFlowProps) {
           {submitError}
         </Alert>
       ) : null}
-      <StepNavigation
-        canGoBack={canGoBack && stepDefinition.key !== 'confirmation'}
-        isLastStep={isLastStep}
-        onBack={handleBack}
-        onNext={handleNext}
-        isSubmitting={isSubmitting}
-        nextLabel={
-          stepDefinition.key === 'review'
-            ? 'Registrar atendimento'
-            : stepDefinition.key === 'confirmation'
-              ? 'Encerrar atendimento'
-              : undefined
-        }
-        nextDisabled={
-          (stepDefinition.key === 'mode' && !intakeMode) ||
-          (stepDefinition.key === 'confirmation' && !confirmation) ||
-          shouldBlockForStaticData
-        }
-      />
+      {stepDefinition.key !== 'welcome' ? (
+        <StepNavigation
+          canGoBack={canGoBack && stepDefinition.key !== 'confirmation'}
+          isLastStep={isLastStep}
+          onBack={handleBack}
+          onNext={handleNext}
+          isSubmitting={isSubmitting}
+          nextLabel={
+            stepDefinition.key === 'review'
+              ? 'Registrar atendimento'
+              : stepDefinition.key === 'confirmation'
+                ? 'Ir para sala de espera'
+                : undefined
+          }
+          nextDisabled={
+            (stepDefinition.key === 'mode' && !intakeMode) ||
+            (stepDefinition.key === 'confirmation' && !confirmation) ||
+            shouldBlockForStaticData
+          }
+        />
+      ) : null}
     </Stack>
   )
 
@@ -531,6 +530,8 @@ export function IntakeFlow({ onComplete }: IntakeFlowProps) {
     }
 
     switch (stepDefinition.key) {
+      case 'welcome':
+        return <WelcomeStep onStart={handleWelcomeStart} />
       case 'mode':
         return <ModeStep />
       case 'document':
@@ -564,6 +565,7 @@ export function IntakeFlow({ onComplete }: IntakeFlowProps) {
     convenios,
     handleRetryLookup,
     handleRetryStaticData,
+    handleWelcomeStart,
     lookupStatus,
     matches,
     specialties,
@@ -572,14 +574,48 @@ export function IntakeFlow({ onComplete }: IntakeFlowProps) {
     summary,
   ])
 
+  const displaySteps = useMemo(() => {
+    if (stepDefinition.key === 'welcome') {
+      return []
+    }
+    return steps.filter((step) => step.key !== 'welcome').map((step) => step.label)
+  }, [steps, stepDefinition.key])
+
+  const displayStepIndex = useMemo(() => {
+    if (stepDefinition.key === 'welcome') {
+      return -1
+    }
+    return activeStep - 1
+  }, [activeStep, stepDefinition.key])
+
+  const isWelcomeScreen = stepDefinition.key === 'welcome'
+
+  if (isWelcomeScreen) {
+    return (
+      <FormProvider {...methods}>
+        <Box
+          sx={{
+            height: '100vh',
+            width: '100vw',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: 'background.default',
+          }}
+        >
+          {currentStepContent}
+        </Box>
+      </FormProvider>
+    )
+  }
+
   return (
     <FormProvider {...methods}>
       <KioskLayout
-        heading="Autoatendimento"
-        steps={steps.map((step) => step.label)}
-        stepIndex={activeStep}
+        heading="Clinica Exemplo"
+        steps={displaySteps}
+        stepIndex={displayStepIndex}
         footer={footer}
-        aside={aside}
       >
         <Stack spacing={{ xs: 3, md: 4 }}>
           {wasResetByTimeout ? (

@@ -1,5 +1,6 @@
 import { useFormContext } from 'react-hook-form'
-import { Box, Button, Stack, Typography } from '@mui/material'
+import { Box, Stack, Typography } from '@mui/material'
+import { SelectableButton } from '../../../components/atoms'
 import type { IntakeFormValues, IntakeMode } from '../types'
 
 const OPTIONS: Array<{
@@ -57,27 +58,14 @@ export function ModeStep() {
           {OPTIONS.map((option) => {
             const isSelected = selectedMode === option.value
             return (
-              <Button
+              <SelectableButton
                 key={option.value}
-                variant={isSelected ? 'contained' : 'outlined'}
+                isSelected={isSelected}
                 size="large"
                 onClick={() => handleSelect(option.value)}
-                sx={{
-                  flex: 1,
-                  px: 3,
-                  py: 1.6,
-                  borderRadius: 10,
-                  fontWeight: 700,
-                  transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-                  boxShadow: isSelected ? '0 10px 18px rgba(26,115,232,0.18)' : 'none',
-                  '&:hover': {
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 8px 16px rgba(15,79,171,0.18)',
-                  },
-                }}
               >
                 {option.title}
-              </Button>
+              </SelectableButton>
             )
           })}
         </Stack>

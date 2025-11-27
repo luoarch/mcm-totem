@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import {
   Box,
   Container,
- Paper,
+  Paper,
   Stack,
   Step,
   StepLabel,
@@ -22,12 +22,10 @@ type KioskLayoutProps = {
 
 export function KioskLayout({
   heading,
-  subheading,
   steps,
   stepIndex,
   children,
   footer,
-  aside,
 }: KioskLayoutProps) {
   return (
     <Box
@@ -39,6 +37,10 @@ export function KioskLayout({
         alignItems: 'stretch',
         py: { xs: 2, md: 4 },
         overflow: 'hidden',
+        ...(!heading && {
+          py: 0,
+          alignItems: 'center',
+        }),
       }}
     >
       <Container
@@ -50,26 +52,34 @@ export function KioskLayout({
           gap: { xs: 3, md: 4 },
           px: { xs: 2.5, md: 0 },
           flex: 1,
+          ...(!heading && {
+            gap: 0,
+            justifyContent: 'center',
+          }),
         }}
       >
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          spacing={{ xs: 2, md: 3 }}
-          alignItems={{ xs: 'flex-start', md: 'center' }}
-          justifyContent="space-between"
-        >
-          <Box sx={{ flexShrink: 0 }}>
-            <Typography variant="h2" component="h1" gutterBottom>
+        {heading ? (
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              width: '100%',
+            }}
+          >
+            <Typography
+              variant="h2"
+              component="h1"
+              sx={{
+                color: 'primary.main',
+                textAlign: 'center',
+                fontWeight: 700,
+              }}
+            >
               {heading}
             </Typography>
-            {subheading ? (
-              <Typography variant="body1" sx={{ maxWidth: 560 }}>
-                {subheading}
-              </Typography>
-            ) : null}
           </Box>
-          {aside}
-        </Stack>
+        ) : null}
 
         <Paper
           elevation={6}
@@ -78,11 +88,24 @@ export function KioskLayout({
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
+            ...(!heading && {
+              justifyContent: 'center',
+            }),
           }}
         >
           <Stack
             spacing={{ xs: 2.5, md: 3 }}
-            sx={{ flex: 1, overflow: 'hidden', px: { xs: 2.5, md: 4 }, py: { xs: 3, md: 4 } }}
+            sx={{
+              flex: 1,
+              overflow: 'hidden',
+              px: { xs: 2.5, md: 4 },
+              py: { xs: 3, md: 4 },
+              ...(!heading && {
+                justifyContent: 'center',
+                px: 0,
+                py: 0,
+              }),
+            }}
           >
             {steps.length > 0 ? (
               <>
@@ -107,7 +130,20 @@ export function KioskLayout({
                 </Typography>
               </>
             ) : null}
-            <Box sx={{ flex: 1, overflow: 'auto', pr: { xs: 0.5, sm: 0 } }}>{children}</Box>
+            <Box
+              sx={{
+                flex: 1,
+                overflow: 'auto',
+                pr: { xs: 0.5, sm: 0 },
+                ...(!heading && {
+                  display: 'flex',
+                  alignItems: 'center',
+                  overflow: 'visible',
+                }),
+              }}
+            >
+              {children}
+            </Box>
           </Stack>
         </Paper>
 

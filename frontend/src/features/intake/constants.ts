@@ -7,6 +7,7 @@ import type {
   IntakeStepKey,
 } from './types'
 
+const WELCOME_STEP: IntakeStepDefinition = { key: 'welcome', label: 'Bem-vindo' }
 const MODE_STEP: IntakeStepDefinition = { key: 'mode', label: 'Início' }
 const CPF_IDENTIFICATION_STEP: IntakeStepDefinition = {
   key: 'document',
@@ -29,6 +30,7 @@ const CONFIRMATION_STEP: IntakeStepDefinition = {
 export const getIntakeSteps = (mode: IntakeMode | null): IntakeStepDefinition[] => {
   if (mode === 'foreign') {
     return [
+      WELCOME_STEP,
       MODE_STEP,
       FOREIGN_STEP,
       COVERAGE_STEP,
@@ -40,6 +42,7 @@ export const getIntakeSteps = (mode: IntakeMode | null): IntakeStepDefinition[] 
   }
 
   return [
+    WELCOME_STEP,
     MODE_STEP,
     CPF_IDENTIFICATION_STEP,
     PATIENT_STEP,
@@ -52,6 +55,7 @@ export const getIntakeSteps = (mode: IntakeMode | null): IntakeStepDefinition[] 
 }
 
 export const STEP_FIELD_MAP: Record<IntakeStepKey, FieldPath<IntakeFormValues>[]> = {
+  welcome: [],
   mode: ['intakeMode'],
   document: ['cpf', 'birthDate', 'lookupFirstName'],
   foreign: ['foreignName', 'foreignBirthDate', 'foreignEmail'],

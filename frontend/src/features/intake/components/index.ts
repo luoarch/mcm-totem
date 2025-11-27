@@ -1,3 +1,4 @@
+export { WelcomeStep } from './WelcomeStep'
 export { ModeStep } from './ModeStep'
 export { DocumentStep } from './DocumentStep'
 export { ForeignStep } from './ForeignStep'

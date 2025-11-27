@@ -31,7 +31,23 @@ export function StepNavigation({
         size="large"
         onClick={onBack}
         disabled={!canGoBack || isSubmitting}
-        sx={{ minWidth: 200 }}
+        sx={{
+          minWidth: 200,
+          borderColor: 'rgba(255, 255, 255, 0.3)',
+          backgroundColor: 'rgba(255, 255, 255, 0.15)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          color: 'text.primary',
+          '&:hover': {
+            borderColor: 'rgba(255, 255, 255, 0.4)',
+            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+          },
+          '&:disabled': {
+            borderColor: 'rgba(255, 255, 255, 0.15)',
+            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+            color: 'rgba(11, 29, 52, 0.4)',
+          },
+        }}
       >
         Voltar
       </Button>
@@ -40,7 +56,18 @@ export function StepNavigation({
         size="large"
         onClick={onNext}
         disabled={isSubmitting || nextDisabled}
-        sx={{ minWidth: 240 }}
+        sx={{
+          minWidth: 240,
+          backgroundColor: '#1A73E8',
+          color: 'rgba(255, 255, 255, 0.95)',
+          '&:hover': {
+            backgroundColor: '#0F4FAB',
+          },
+          '&:disabled': {
+            backgroundColor: 'rgba(26, 115, 232, 0.4)',
+            color: 'rgba(255, 255, 255, 0.6)',
+          },
+        }}
       >
         {isLastStep ? nextLabel ?? 'Concluir atendimento' : nextLabel ?? 'Avançar'}
       </Button>

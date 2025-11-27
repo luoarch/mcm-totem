@@ -8,6 +8,7 @@ import type {
 export type IntakeMode = 'cpf' | 'foreign'
 
 export type IntakeStepKey =
+  | 'welcome'
   | 'mode'
   | 'document'
   | 'foreign'

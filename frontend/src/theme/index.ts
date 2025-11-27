@@ -19,7 +19,7 @@ const baseTheme = createTheme({
     },
     text: {
       primary: '#0B1D34',
-      secondary: 'rgba(11, 29, 52, 0.72)',
+      secondary: 'rgba(11, 29, 52, 0.75)',
     },
     error: {
       main: '#F04438',
@@ -64,7 +64,7 @@ const baseTheme = createTheme({
     body2: {
       fontSize: '1.0625rem',
       lineHeight: 1.6,
-      color: 'rgba(11, 29, 52, 0.72)',
+      color: 'rgba(11, 29, 52, 0.75)',
     },
     button: {
       fontSize: '1.3125rem',
@@ -100,20 +100,50 @@ const baseTheme = createTheme({
           minHeight: 64,
           paddingInline: 28,
           borderRadius: 10,
+          color: 'rgba(255, 255, 255, 0.9)',
         },
         sizeLarge: {
           minHeight: 70,
           fontSize: '1.275rem',
         },
+        contained: {
+          backgroundColor: '#1A73E8',
+          color: 'rgba(255, 255, 255, 0.95)',
+          boxShadow: '0 8px 16px rgba(26, 115, 232, 0.25)',
+          '&:hover': {
+            backgroundColor: '#0F4FAB',
+            boxShadow: '0 12px 24px rgba(26, 115, 232, 0.3)',
+          },
+        },
         containedPrimary: {
-          boxShadow: '0 12px 28px rgba(26, 115, 232, 0.28)',
+          backgroundColor: '#1A73E8',
+          color: 'rgba(255, 255, 255, 0.95)',
+          boxShadow: '0 8px 16px rgba(26, 115, 232, 0.25)',
+          '&:hover': {
+            backgroundColor: '#0F4FAB',
+            boxShadow: '0 12px 24px rgba(26, 115, 232, 0.3)',
+          },
         },
         outlined: {
-          borderWidth: 1.4,
-          borderColor: 'rgba(255, 255, 255, 0.35)',
-          backgroundColor: 'rgba(255, 255, 255, 0.08)',
-          backdropFilter: 'blur(6px)',
-          WebkitBackdropFilter: 'blur(6px)',
+          borderWidth: 1,
+          borderColor: 'rgba(255, 255, 255, 0.3)',
+          backgroundColor: 'rgba(255, 255, 255, 0.15)',
+          color: 'text.primary',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          '&:hover': {
+            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            borderColor: 'rgba(255, 255, 255, 0.4)',
+          },
+        },
+        text: {
+          backgroundColor: 'rgba(255, 255, 255, 0.15)',
+          color: 'text.primary',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          '&:hover': {
+            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+          },
         },
       },
     },
@@ -122,8 +152,8 @@ const baseTheme = createTheme({
         root: {
           borderRadius: 22,
           padding: 32,
-          background: 'rgba(255, 255, 255, 0.18)',
-          border: '1px solid rgba(255, 255, 255, 0.28)',
+          background: 'rgba(255, 255, 255, 0.15)',
+          border: '1px solid rgba(255, 255, 255, 0.3)',
           boxShadow: '0 20px 40px rgba(15, 79, 171, 0.12)',
           backdropFilter: 'blur(18px)',
           WebkitBackdropFilter: 'blur(18px)',
@@ -158,7 +188,7 @@ const baseTheme = createTheme({
           fontSize: '0.7rem',
           fontWeight: 600,
           marginTop: 4,
-          color: 'rgba(11, 29, 52, 0.52)',
+          color: 'rgba(11, 29, 52, 0.6)',
           '&.Mui-active': {
             color: '#0B1D34',
           },
@@ -193,6 +223,120 @@ const baseTheme = createTheme({
     MuiContainer: {
       defaultProps: {
         maxWidth: 'md',
+      },
+    },
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          '& .MuiOutlinedInput-root': {
+            backgroundColor: 'rgba(255, 255, 255, 0.15)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            transition: 'all 0.2s ease',
+            '& fieldset': {
+              borderColor: 'rgba(255, 255, 255, 0.3)',
+            },
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+              '& fieldset': {
+                borderColor: 'rgba(255, 255, 255, 0.4)',
+              },
+            },
+            '&.Mui-focused': {
+              backgroundColor: 'rgba(255, 255, 255, 0.25)',
+              '& fieldset': {
+                borderColor: 'rgba(26, 115, 232, 0.6)',
+                borderWidth: '2px',
+              },
+            },
+          },
+          '& .MuiInputLabel-root': {
+            color: 'rgba(11, 29, 52, 0.85)',
+            '&.Mui-focused': {
+              color: '#1A73E8',
+            },
+          },
+          '& .MuiFormHelperText-root': {
+            color: 'rgba(11, 29, 52, 0.7)',
+          },
+        },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        root: {
+          backgroundColor: 'rgba(255, 255, 255, 0.15)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          '& .MuiOutlinedInput-notchedOutline': {
+            borderColor: 'rgba(255, 255, 255, 0.3)',
+          },
+          '&:hover .MuiOutlinedInput-notchedOutline': {
+            borderColor: 'rgba(255, 255, 255, 0.4)',
+            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+          },
+          '&.Mui-focused': {
+            backgroundColor: 'rgba(255, 255, 255, 0.25)',
+            '& .MuiOutlinedInput-notchedOutline': {
+              borderColor: 'rgba(26, 115, 232, 0.6)',
+              borderWidth: '2px',
+            },
+          },
+        },
+      },
+    },
+    MuiMenu: {
+      styleOverrides: {
+        paper: {
+          backgroundColor: 'rgba(255, 255, 255, 0.15)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255, 255, 255, 0.3)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+        },
+      },
+    },
+    MuiMenuItem: {
+      styleOverrides: {
+        root: {
+          backgroundColor: 'transparent',
+          '&:hover': {
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+          },
+          '&.Mui-selected': {
+            backgroundColor: 'rgba(26, 115, 232, 0.15)',
+            '&:hover': {
+              backgroundColor: 'rgba(26, 115, 232, 0.2)',
+            },
+          },
+        },
+      },
+    },
+    MuiToggleButton: {
+      styleOverrides: {
+        root: {
+          backgroundColor: 'rgba(255, 255, 255, 0.15)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255, 255, 255, 0.3)',
+          color: 'text.primary',
+          transition: 'all 0.2s ease',
+          '&:hover': {
+            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            borderColor: 'rgba(255, 255, 255, 0.4)',
+          },
+          '&.Mui-selected': {
+            backgroundColor: '#1A73E8',
+            color: 'rgba(255, 255, 255, 0.95)',
+            borderColor: '#1A73E8',
+            boxShadow: '0 8px 20px rgba(26,115,232,0.3)',
+            '&:hover': {
+              backgroundColor: '#0F4FAB',
+              borderColor: '#0F4FAB',
+            },
+          },
+        },
       },
     },
   },

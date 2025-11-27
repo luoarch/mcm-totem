@@ -23,7 +23,7 @@ export function DocumentStep() {
         justifyContent="center"
         sx={{ maxWidth: 820 }}
       >
-        <Grid size={{ xs: 12, md: 8 }}>
+        <Grid size={{ xs: 12, md: 12 }}>
           <Controller
             name="lookupFirstName"
             control={control}
@@ -40,7 +40,7 @@ export function DocumentStep() {
                 }}
                 onBlur={() => {
                   const normalized = (field.value ?? '').trim().replace(/\s+/g, ' ')
-                  field.onChange(normalized.split(' ')[0] ?? '')
+                  field.onChange(normalized.split(' ')[0])
                   field.onBlur()
                 }}
                 error={Boolean(fieldState.error)}

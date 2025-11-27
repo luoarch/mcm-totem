@@ -9,7 +9,7 @@ export function ConfirmationStep({ confirmation }: ConfirmationStepProps) {
   const heading = confirmation.manualAssistance ? 'Atendimento manual necessário' : 'Atendimento registrado'
   const description = confirmation.manualAssistance
     ? 'Leve este identificador ao balcão para concluir o atendimento com ajuda de um atendente.'
-    : 'Utilize o identificador abaixo para acompanhar a chamada no painel.'
+    : 'Utilize o identificador ao lado para acompanhar a chamada no painel.'
   const submittedAtLabel = confirmation.submittedAt
     ? new Date(confirmation.submittedAt).toLocaleString('pt-BR', {
       day: '2-digit',
@@ -23,9 +23,9 @@ export function ConfirmationStep({ confirmation }: ConfirmationStepProps) {
   return (
     <Stack spacing={{ xs: 2.5, md: 3.5 }} sx={{ height: '100%' }}>
       <Stack
-        direction={{ xs: 'column', md: 'row' }}
-        spacing={{ xs: 2, md: 3 }}
-        alignItems={{ xs: 'flex-start', md: 'center' }}
+        direction="row"
+        spacing={3}
+        alignItems="center"
         justifyContent="space-between"
       >
         <Stack spacing={1}>
@@ -49,7 +49,7 @@ export function ConfirmationStep({ confirmation }: ConfirmationStepProps) {
             px: { xs: 3, md: 5 },
             py: { xs: 2.5, md: 3 },
             textAlign: 'center',
-            minWidth: { xs: '100%', md: 320 },
+            minWidth: 320,
           }}
           role="status"
           aria-live="polite"
