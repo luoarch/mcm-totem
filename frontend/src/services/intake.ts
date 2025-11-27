@@ -8,7 +8,7 @@ import type {
   MCCreatePatientResponse,
   MCAtendimentoResponse,
 } from '../types/intake'
-import type { IntakeSubmission } from '../features/intake/types'
+import type { IntakeSubmissionCpf } from '../features/intake/types'
 import { apiClient } from './http'
 import { IS_API_CONFIGURED } from '../config/api'
 import { getCompanyCode } from './auth'
@@ -212,14 +212,14 @@ export async function listSpecialties(): Promise<SpecialtyOption[]> {
 /**
  * Submit intake and create attendance (boletim)
  */
-export async function submitIntake(payload: IntakeSubmission): Promise<void> {
+export async function submitIntake(payload: IntakeSubmissionCpf): Promise<void> {
   if (IS_API_CONFIGURED) {
     try {
       const params = new URLSearchParams()
       params.append('autoagendamento', 'true')
       params.append('especialidade', payload.specialtyId)
       params.append('convenio', payload.convenioId ?? '')
-      params.append('nropaciente', payload.patientId ?? '')
+      params.append('nropaciente', payload.patientId)
       params.append('tipo', 'e')
       params.append('integracaowhatsapp', 'S')
 

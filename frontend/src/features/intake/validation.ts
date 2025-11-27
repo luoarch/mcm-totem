@@ -58,6 +58,15 @@ const patientSelectionSchema = yup
   .oneOf(['existing', 'new'])
   .required()
 
+const lookupFirstNameSchema = yup
+  .string()
+  .transform((value) => value?.trim() ?? '')
+  .when('intakeMode', ([mode], schema) =>
+    mode === 'cpf'
+      ? schema.required('Informe o primeiro nome.').max(40, 'Use no máximo 40 caracteres.')
+      : schema.strip(true).optional(),
+  )
+
 const phoneSchema = yup
   .string()
   .transform((value) => stripPhone(value ?? ''))
@@ -79,6 +88,7 @@ export const intakeSchema = yup
     intakeMode: intakeModeSchema,
     cpf: cpfSchema,
     birthDate: birthDateSchema,
+    lookupFirstName: lookupFirstNameSchema,
     patientSelection: patientSelectionSchema,
     existingPatientId: yup
       .string()

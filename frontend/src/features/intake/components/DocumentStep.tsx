@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Controller, useFormContext } from 'react-hook-form'
 import Grid from '@mui/material/Grid'
 import { Stack, TextField, Typography } from '@mui/material'
@@ -6,6 +7,7 @@ import type { IntakeFormValues } from '../types'
 
 export function DocumentStep() {
   const { control } = useFormContext<IntakeFormValues>()
+  const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), [])
 
   return (
     <Stack spacing={{ xs: 2.5, md: 3 }} alignItems="center">
@@ -19,8 +21,36 @@ export function DocumentStep() {
         container
         spacing={{ xs: 1.5, md: 2 }}
         justifyContent="center"
-        sx={{ maxWidth: 680 }}
+        sx={{ maxWidth: 820 }}
       >
+        <Grid size={{ xs: 12, md: 8 }}>
+          <Controller
+            name="lookupFirstName"
+            control={control}
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                label="Primeiro nome"
+                placeholder="Apenas o primeiro nome"
+                inputProps={{
+                  maxLength: 40,
+                }}
+                onChange={(event) => {
+                  field.onChange(event.target.value.replace(/\s+/g, ' '))
+                }}
+                onBlur={() => {
+                  const normalized = (field.value ?? '').trim().replace(/\s+/g, ' ')
+                  field.onChange(normalized.split(' ')[0] ?? '')
+                  field.onBlur()
+                }}
+                error={Boolean(fieldState.error)}
+                helperText={fieldState.error?.message ?? ' '}
+                fullWidth
+                size="medium"
+              />
+            )}
+          />
+        </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
           <Controller
             name="cpf"
@@ -41,6 +71,7 @@ export function DocumentStep() {
                 }}
                 error={Boolean(fieldState.error)}
                 helperText={fieldState.error?.message ?? ' '}
+                autoComplete="off"
                 fullWidth
                 size="medium"
               />
@@ -59,7 +90,7 @@ export function DocumentStep() {
                 label="Data de nascimento"
                 InputLabelProps={{ shrink: true }}
                 inputProps={{
-                  max: new Date().toISOString().split('T')[0],
+                  max: todayIso,
                 }}
                 error={Boolean(fieldState.error)}
                 helperText={fieldState.error?.message ?? ' '}

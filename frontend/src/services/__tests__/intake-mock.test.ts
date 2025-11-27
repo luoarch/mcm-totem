@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { lookupPatients, createPatient, listConvenios, listSpecialties, submitIntake } from '../intake'
-import type { IntakeSubmission } from '../../features/intake/types'
+import type { IntakeSubmissionCpf } from '../../features/intake/types'
 
 // Mock config to force mock usage (no API)
 vi.mock('../../config/api', async (importOriginal) => {
@@ -15,6 +15,18 @@ describe('Intake Service (Mock Mode)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
+
+  const basePayload: IntakeSubmissionCpf = {
+    intakeMode: 'cpf',
+    patientId: 'pat1',
+    cpf: '12345678900',
+    birthDate: '2023-01-01',
+    coverageType: 'particular',
+    convenioId: null,
+    specialtyId: 'spec1',
+    reason: 'Teste',
+    npsScore: null,
+  }
 
   describe('lookupPatients (Mock)', () => {
     it('should return mock data when CPF ends with even number', async () => {
@@ -56,15 +68,7 @@ describe('Intake Service (Mock Mode)', () => {
 
   describe('submitIntake (Mock)', () => {
     it('should simulate success', async () => {
-      await expect(submitIntake({
-        specialtyId: 'spec1',
-        convenioId: null,
-        patientId: 'pat1',
-        intakeMode: 'cpf',
-        cpf: '123',
-        birthDate: '2023',
-        reason: 'Test reason',
-      } as IntakeSubmission)).resolves.toBeUndefined()
+      await expect(submitIntake(basePayload)).resolves.toBeUndefined()
     })
   })
 })

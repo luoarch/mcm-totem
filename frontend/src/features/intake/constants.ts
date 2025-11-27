@@ -53,7 +53,7 @@ export const getIntakeSteps = (mode: IntakeMode | null): IntakeStepDefinition[] 
 
 export const STEP_FIELD_MAP: Record<IntakeStepKey, FieldPath<IntakeFormValues>[]> = {
   mode: ['intakeMode'],
-  document: ['cpf', 'birthDate'],
+  document: ['cpf', 'birthDate', 'lookupFirstName'],
   foreign: ['foreignName', 'foreignBirthDate', 'foreignEmail'],
   patient: ['patientSelection', 'existingPatientId', 'patientName', 'phone'],
   coverage: ['coverageType', 'convenioId'],
@@ -67,6 +67,7 @@ export const DEFAULT_FORM_VALUES: IntakeFormValues = {
   intakeMode: null,
   cpf: '',
   birthDate: '',
+  lookupFirstName: '',
   patientSelection: 'existing',
   existingPatientId: undefined,
   patientName: '',

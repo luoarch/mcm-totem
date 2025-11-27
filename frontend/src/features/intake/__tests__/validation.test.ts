@@ -7,6 +7,7 @@ describe('Intake Validation', () => {
     intakeMode: 'cpf',
     cpf: '52998224725', // Valid generated CPF
     birthDate: '1990-01-01',
+    lookupFirstName: 'Maria',
     patientSelection: 'existing',
     existingPatientId: '123',
     patientName: 'Maria Silva',
@@ -39,6 +40,11 @@ describe('Intake Validation', () => {
   it('should fail if CPF is missing in cpf mode', async () => {
     const invalid = { ...validBase, cpf: '' }
     await expect(intakeSchema.validate(invalid)).rejects.toThrow(ValidationError)
+  })
+
+  it('should fail if first name is missing in cpf mode', async () => {
+    const invalid = { ...validBase, lookupFirstName: '' }
+    await expect(intakeSchema.validate(invalid)).rejects.toThrow(/Informe o primeiro nome/)
   })
 
   it('should fail if phone is missing for new patient', async () => {

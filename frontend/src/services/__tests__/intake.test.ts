@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import type { IntakeSubmission } from '../../features/intake/types'
+import type { IntakeSubmissionCpf } from '../../features/intake/types'
 
 const mockApiGet = vi.fn()
 const mockApiPost = vi.fn()
@@ -16,6 +16,18 @@ vi.mock('../auth', () => ({
 }))
 
 const importService = () => import('../intake')
+
+const basePayload: IntakeSubmissionCpf = {
+  intakeMode: 'cpf',
+  patientId: 'pat1',
+  cpf: '12345678900',
+  birthDate: '2023-01-01',
+  coverageType: 'particular',
+  convenioId: null,
+  specialtyId: 'spec1',
+  reason: 'Dor de cabeça',
+  npsScore: null,
+}
 
 describe('Intake Service', () => {
   beforeEach(() => {
@@ -221,14 +233,9 @@ describe('Intake Service', () => {
 
       const { submitIntake } = await importService()
       await submitIntake({
-        specialtyId: 'spec1',
+        ...basePayload,
         convenioId: 'conv1',
-        patientId: 'pat1',
-        intakeMode: 'cpf',
-        cpf: '123',
-        birthDate: '2023',
-        reason: 'reason',
-      } as IntakeSubmission)
+      })
 
       expect(mockApiPost).toHaveBeenCalledWith(
         '/atendimentoboletim',
@@ -254,14 +261,14 @@ describe('Intake Service', () => {
       })
 
       const { submitIntake } = await importService()
-      await expect(submitIntake({} as IntakeSubmission)).rejects.toThrow('Fail')
+      await expect(submitIntake(basePayload)).rejects.toThrow('Fail')
     })
 
     it('throws when request fails before response', async () => {
       mockApiPost.mockRejectedValue(new Error('timeout'))
       const { submitIntake } = await importService()
 
-      await expect(submitIntake({} as IntakeSubmission)).rejects.toThrow('timeout')
+      await expect(submitIntake(basePayload)).rejects.toThrow('timeout')
     })
 
     it('throws when status is not 200', async () => {
@@ -271,7 +278,7 @@ describe('Intake Service', () => {
       })
 
       const { submitIntake } = await importService()
-      await expect(submitIntake({} as IntakeSubmission)).rejects.toThrow('??')
+      await expect(submitIntake(basePayload)).rejects.toThrow('??')
     })
 
     it('resolves via mock path when API disabled', async () => {
@@ -279,7 +286,7 @@ describe('Intake Service', () => {
       vi.useFakeTimers()
       const { submitIntake } = await importService()
 
-      const promise = submitIntake({} as IntakeSubmission)
+      const promise = submitIntake(basePayload)
       await vi.advanceTimersByTimeAsync(500)
       await expect(promise).resolves.toBeUndefined()
       expect(mockApiPost).not.toHaveBeenCalled()
@@ -293,14 +300,13 @@ describe('Intake Service', () => {
       const { submitIntake } = await importService()
 
       await submitIntake({
-        specialtyId: 'spec',
-        convenioId: undefined,
-        patientId: undefined,
-      } as IntakeSubmission)
+        ...basePayload,
+        convenioId: null,
+      })
 
       const params = mockApiPost.mock.calls[0][1] as URLSearchParams
       expect(params.get('convenio')).toBe('')
-      expect(params.get('nropaciente')).toBe('')
+      expect(params.get('nropaciente')).toBe('pat1')
     })
   })
 })
