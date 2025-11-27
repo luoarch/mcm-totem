@@ -1,5 +1,6 @@
 import * as yup from 'yup'
 import { isValidCpf, stripCpf } from '../../utils/cpf'
+import { isValidBrazilianPhone, stripPhone } from '../../utils/phone'
 import type { IntakeFormValues } from './types'
 import { REASON_MAX_LENGTH } from './constants'
 
@@ -16,7 +17,7 @@ const baseDateSchema = yup
   })
 
 const intakeModeSchema = yup
-  .mixed<IntakeFormValues['intakeMode']>()
+  .mixed<NonNullable<IntakeFormValues['intakeMode']>>()
   .oneOf(['cpf', 'foreign'], 'Selecione uma opção para continuar.')
   .required('Escolha uma opção de identificação.')
 
@@ -26,9 +27,9 @@ const cpfSchema = yup
   .when('intakeMode', ([mode], schema) =>
     mode === 'cpf'
       ? schema
-          .required('Informe o CPF do paciente.')
-          .length(11, 'CPF deve ter 11 dígitos.')
-          .test('cpf-valid', 'CPF inválido.', (value) => (value ? isValidCpf(value) : false))
+        .required('Informe o CPF do paciente.')
+        .length(11, 'CPF deve ter 11 dígitos.')
+        .test('cpf-valid', 'CPF inválido.', (value) => (value ? isValidCpf(value) : false))
       : schema.strip(true).optional(),
   )
 
@@ -37,8 +38,8 @@ const birthDateSchema = yup
   .when('intakeMode', ([mode], schema) =>
     mode === 'cpf'
       ? schema
-          .required('Informe a data de nascimento.')
-          .concat(baseDateSchema)
+        .required('Informe a data de nascimento.')
+        .concat(baseDateSchema)
       : schema.strip(true).optional(),
   )
 
@@ -47,8 +48,8 @@ const foreignBirthDateSchema = yup
   .when('intakeMode', ([mode], schema) =>
     mode === 'foreign'
       ? schema
-          .required('Informe a data de nascimento.')
-          .concat(baseDateSchema)
+        .required('Informe a data de nascimento.')
+        .concat(baseDateSchema)
       : schema.strip(true).optional(),
   )
 
@@ -57,7 +58,23 @@ const patientSelectionSchema = yup
   .oneOf(['existing', 'new'])
   .required()
 
-export const intakeSchema: yup.ObjectSchema<IntakeFormValues> = yup
+const phoneSchema = yup
+  .string()
+  .transform((value) => stripPhone(value ?? ''))
+  .when(['patientSelection', 'intakeMode'], ([selection, mode], schema) => {
+    if (mode === 'foreign') {
+      return schema.strip(true).optional()
+    }
+    return selection === 'new'
+      ? schema
+        .required('Informe o telefone celular.')
+        .test('phone-valid', 'Telefone inválido. Use DDD + número.', (value) =>
+          value ? isValidBrazilianPhone(value) : false,
+        )
+      : schema.notRequired()
+  })
+
+export const intakeSchema = yup
   .object({
     intakeMode: intakeModeSchema,
     cpf: cpfSchema,
@@ -83,6 +100,7 @@ export const intakeSchema: yup.ObjectSchema<IntakeFormValues> = yup
           ? schema.required('Informe o nome completo.')
           : schema.notRequired()
       }),
+    phone: phoneSchema,
     foreignName: yup
       .string()
       .transform((value) => value?.trim() ?? '')
@@ -97,9 +115,9 @@ export const intakeSchema: yup.ObjectSchema<IntakeFormValues> = yup
       .when('intakeMode', ([mode], schema) =>
         mode === 'foreign'
           ? schema
-              .optional()
-              .nullable()
-              .email('E-mail inválido.')
+            .optional()
+            .nullable()
+            .email('E-mail inválido.')
           : schema.strip(true).optional(),
       ),
     coverageType: yup.mixed<'particular' | 'convenio'>().oneOf(['particular', 'convenio']).required(),

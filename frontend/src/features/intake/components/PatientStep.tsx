@@ -220,23 +220,40 @@ export function PatientStep({ matches, status, onRetry }: PatientStepProps) {
       ) : null}
 
       {(patientSelection === 'new' || (!hasMatches && status !== 'loading')) && (
-        <Controller
-          name="patientName"
-          control={control}
-          render={({ field, fieldState }) => (
-            <TextField
-              {...field}
-              label="Nome completo do paciente"
-              placeholder="Nome e sobrenome"
-              autoFocus={!hasMatches}
-              error={Boolean(fieldState.error)}
-              helperText={fieldState.error?.message ?? ' '}
-              fullWidth
-              size="medium"
-              sx={{ maxWidth: 560 }}
-            />
-          )}
-        />
+        <Stack spacing={2} sx={{ width: '100%', maxWidth: 560 }}>
+          <Controller
+            name="patientName"
+            control={control}
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                label="Nome completo do paciente"
+                placeholder="Nome e sobrenome"
+                autoFocus={!hasMatches}
+                error={Boolean(fieldState.error)}
+                helperText={fieldState.error?.message ?? ' '}
+                fullWidth
+                size="medium"
+              />
+            )}
+          />
+          <Controller
+            name="phone"
+            control={control}
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                label="Telefone celular"
+                placeholder="(11) 99999-9999"
+                type="tel"
+                error={Boolean(fieldState.error)}
+                helperText={fieldState.error?.message ?? ' '}
+                fullWidth
+                size="medium"
+              />
+            )}
+          />
+        </Stack>
       )}
     </Stack>
   )

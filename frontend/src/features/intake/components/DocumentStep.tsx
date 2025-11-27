@@ -1,5 +1,6 @@
 import { Controller, useFormContext } from 'react-hook-form'
-import { Grid, Stack, TextField, Typography } from '@mui/material'
+import Grid from '@mui/material/Grid'
+import { Stack, TextField, Typography } from '@mui/material'
 import { formatCpf, stripCpf } from '../../../utils/cpf'
 import type { IntakeFormValues } from '../types'
 
@@ -20,7 +21,7 @@ export function DocumentStep() {
         justifyContent="center"
         sx={{ maxWidth: 680 }}
       >
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Controller
             name="cpf"
             control={control}
@@ -47,7 +48,7 @@ export function DocumentStep() {
           />
         </Grid>
 
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Controller
             name="birthDate"
             control={control}

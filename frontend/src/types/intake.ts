@@ -1,3 +1,7 @@
+/**
+ * MC AutoAtendimento API Response Types
+ */
+
 export type CoverageType = 'particular' | 'convenio'
 
 export type PayerOption = {
@@ -19,3 +23,38 @@ export type PatientMatch = {
   birthDate: string
 }
 
+/**
+ * MC API specific response types
+ */
+
+export type MCPatientResponse = {
+  nropaciente: number
+  nome?: string
+  cpf?: string
+  nasci?: string
+  celular?: string
+}
+
+export type MCConvenioResponse = {
+  convenio: string
+  nomefantasia?: string
+  razaosocial?: string
+}
+
+export type MCEspecialidadeResponse = {
+  especialidade: string
+  descricao: string
+}
+
+export type MCCreatePatientResponse = {
+  ok: boolean
+  nropac?: number
+  error?: string
+  message?: string
+}
+
+export type MCAtendimentoResponse = {
+  type: 'success' | 'error'
+  ok?: boolean
+  message?: string
+}

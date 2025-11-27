@@ -35,7 +35,8 @@ apiClient.interceptors.response.use(
 
     const { response, config } = error
 
-    if (response?.status === 401 && config) {
+    // Handle both 401 (Unauthorized) and 403 (Forbidden) for token refresh
+    if ((response?.status === 401 || response?.status === 403) && config) {
       const retriableConfig = config as RetriableConfig
       if (retriableConfig._retry) {
         clearTotemSession()
@@ -46,10 +47,7 @@ apiClient.interceptors.response.use(
       clearTotemSession()
       const token = await ensureTotemSession()
       if (token) {
-        retriableConfig.headers = {
-          ...retriableConfig.headers,
-          Authorization: `Bearer ${token}`,
-        }
+        retriableConfig.headers.Authorization = `Bearer ${token}`
         return apiClient(retriableConfig)
       }
     }

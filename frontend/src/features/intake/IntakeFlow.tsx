@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { FormProvider, useForm } from 'react-hook-form'
+import { FormProvider, useForm, type Resolver } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import { Alert, Stack } from '@mui/material'
 import { KioskLayout } from '../../layouts/KioskLayout'
@@ -28,6 +28,7 @@ import type {
 } from './types'
 import { intakeSchema } from './validation'
 import {
+  createPatient,
   listConvenios,
   listSpecialties,
   lookupPatients,
@@ -49,7 +50,7 @@ export function IntakeFlow({ onComplete }: IntakeFlowProps) {
   const methods = useForm<IntakeFormValues>({
     mode: 'onChange',
     defaultValues: DEFAULT_FORM_VALUES,
-    resolver: yupResolver(intakeSchema),
+    resolver: yupResolver(intakeSchema) as Resolver<IntakeFormValues>,
   })
   const intakeMode = methods.watch('intakeMode')
   const patientSelection = methods.watch('patientSelection')
@@ -182,31 +183,61 @@ export function IntakeFlow({ onComplete }: IntakeFlowProps) {
     setIsSubmitting(true)
     setSubmitError(null)
     setWasResetByTimeout(false)
-    const payload: IntakeSubmission = {
-      intakeMode: values.intakeMode ?? 'cpf',
-      cpf: values.cpf,
-      birthDate: values.intakeMode === 'foreign' ? values.foreignBirthDate : values.birthDate,
-      patientId: values.patientSelection === 'existing' ? values.existingPatientId : undefined,
-      auditSelectionId:
-        values.patientSelection === 'existing' ? values.existingPatientId ?? null : null,
-      patientName:
-        values.intakeMode === 'foreign'
-          ? values.foreignName
-          : values.patientSelection === 'new'
-            ? values.patientName
-            : undefined,
-      foreignName: values.intakeMode === 'foreign' ? values.foreignName : undefined,
-      foreignBirthDate: values.intakeMode === 'foreign' ? values.foreignBirthDate : undefined,
-      foreignEmail:
-        values.intakeMode === 'foreign' ? values.foreignEmail?.trim() || null : null,
-      coverageType: values.coverageType,
-      convenioId: values.coverageType === 'convenio' ? values.convenioId ?? null : null,
-      specialtyId: values.specialtyId!,
-      reason: values.reason,
-      npsScore: values.npsScore,
-    }
 
     try {
+      // If creating a new patient, call the patient creation API first
+      let finalPatientId = values.patientSelection === 'existing' ? values.existingPatientId : undefined
+
+      if (
+        values.intakeMode === 'cpf' &&
+        values.patientSelection === 'new' &&
+        values.patientName &&
+        values.phone
+      ) {
+        const convenioCode = values.convenioId ?? ''
+        try {
+          finalPatientId = await createPatient(
+            values.cpf,
+            values.patientName,
+            values.birthDate,
+            values.phone,
+            convenioCode,
+          )
+        } catch (error) {
+          console.error('Erro ao criar paciente', error)
+          setSubmitError(
+            'Não foi possível criar o cadastro do paciente. Verifique os dados e tente novamente.',
+          )
+          setIsSubmitting(false)
+          return
+        }
+      }
+
+      const payload: IntakeSubmission = {
+        intakeMode: values.intakeMode ?? 'cpf',
+        cpf: values.cpf,
+        birthDate: values.intakeMode === 'foreign' ? values.foreignBirthDate : values.birthDate,
+        patientId: finalPatientId,
+        phone: values.patientSelection === 'new' ? values.phone : undefined,
+        auditSelectionId:
+          values.patientSelection === 'existing' ? values.existingPatientId ?? null : null,
+        patientName:
+          values.intakeMode === 'foreign'
+            ? values.foreignName
+            : values.patientSelection === 'new'
+              ? values.patientName
+              : undefined,
+        foreignName: values.intakeMode === 'foreign' ? values.foreignName : undefined,
+        foreignBirthDate: values.intakeMode === 'foreign' ? values.foreignBirthDate : undefined,
+        foreignEmail:
+          values.intakeMode === 'foreign' ? values.foreignEmail?.trim() || null : null,
+        coverageType: values.coverageType,
+        convenioId: values.coverageType === 'convenio' ? values.convenioId ?? null : null,
+        specialtyId: values.specialtyId!,
+        reason: values.reason,
+        npsScore: values.npsScore,
+      }
+
       await submitIntake(payload)
       if (onComplete) {
         await onComplete(payload)

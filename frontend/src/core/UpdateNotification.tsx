@@ -24,7 +24,7 @@ export function UpdateNotification() {
   }
 
   const handleUpdate = () => {
-    updateServiceWorker(true).catch((error) => {
+    updateServiceWorker(true).catch((error: unknown) => {
       console.error('Falha ao atualizar service worker', error)
     })
     handleClose()

@@ -1,8 +1,13 @@
 {
-  "name": "totem",
+  "name": "mcm-totem",
   "private": true,
   "workspaces": [
     "frontend"
   ],
-  "packageManager": "yarn@1.22.22"
+  "packageManager": "yarn@1.22.22",
+  "author": "luoarch",
+  "license": "Proprietaria",
+  "engines": {
+    "node": ">=24"
+  }
 }

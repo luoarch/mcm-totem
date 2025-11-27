@@ -27,6 +27,7 @@ export type IntakeFormValues = {
   patientSelection: PatientSelection
   existingPatientId?: string
   patientName: string
+  phone: string
   foreignName: string
   foreignBirthDate: string
   foreignEmail?: string
@@ -52,6 +53,7 @@ export type IntakeSubmission = {
   intakeMode: IntakeMode
   patientId?: string
   patientName?: string
+  phone?: string
   auditSelectionId?: string | null
   cpf: string
   birthDate: string
