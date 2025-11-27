@@ -61,6 +61,9 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
+    exclude: [
+      'tests/api/**/*', // Playwright suites
+    ],
     coverage: {
       exclude: ['src/features/intake/constants.ts'],
     },

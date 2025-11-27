@@ -75,3 +75,44 @@ gerarAtendimento({ patientId, convenioCode, especialidadeCode }, token)
 ## Referência de cURL
 
 - Exemplos completos para cada endpoint foram capturados durante a análise e devem ser usados para debugar rapidamente chamadas isoladas (substituir credenciais sensíveis antes de compartilhar).
+
+## Testes automatizados (API)
+
+- `tests/api/live/*`: fluxo completo contra a API real (login → paciente → convênio → especialidade → atendimento).  
+- `tests/api/contract/*`: cenários de contrato/erro usando um servidor mock local (sem chamar a API externa).
+
+### Como rodar
+
+```bash
+# roda todos os projetos Playwright (live + contratos/mocks)
+yarn test:e2e
+
+# garante execuções seriais e roda apenas os testes live
+ALLOW_PROD_E2E=false TOTEM_FLOW_MODE=existing yarn test:e2e:live
+```
+
+> ⚠️ Os testes live executam chamadas **reais**. O runner bloqueia domínios conhecidos de produção (`gestaosaude.mcinfor-saude.net.br`) a menos que `ALLOW_PROD_E2E=true` seja informado explicitamente.
+
+### Variáveis obrigatórias
+
+| Escopo | Variável | Observação |
+| --- | --- | --- |
+| Base | `TOTEM_BASE_URL` | Nunca usar ambiente de produção sem `ALLOW_PROD_E2E=true`. |
+| Login | `TOTEM_LOGIN_EMPRESA`, `TOTEM_LOGIN_USERNAME`, `TOTEM_LOGIN_PASSWORD` | Credenciais utilizadas em `/login/externo`. |
+| Convênio | `TOTEM_COMPANY_CODE` (opcional) | Quando ausente, o código retornado em `codacesso` no login é reutilizado. |
+
+### Modos de paciente (tests/api/live)
+
+| Variável | Função |
+| --- | --- |
+| `TOTEM_FLOW_MODE` | `existing` (default) ou `create`. |
+| `TOTEM_PATIENT_CPF`, `TOTEM_PATIENT_NASCI`, `TOTEM_PATIENT_FIRSTNAME` | Obrigatórias no modo `existing`. `NASCI` aceita `DD/MM/AAAA`, `ddmmyyyy` ou `YYYY-MM-DD`. |
+| `TOTEM_ALLOW_CREATE_MODE` | Precisa ser `true` para habilitar o modo `create` (evita criação acidental de pacientes). |
+| `TOTEM_CREATE_CPF`, `TOTEM_CREATE_FULLNAME`, `TOTEM_CREATE_BIRTHDATE`, `TOTEM_CREATE_PHONE` | Opcional no modo `create`. Quando ausentes e `TOTEM_ALLOW_CREATE_MODE=true`, dados válidos são gerados randomicamente e registrados como `generated`. |
+
+O teste adiciona anotações no relatório (`patientMode=existing-matched` / `create-created`) para facilitar auditoria de cada execução.
+
+### Observabilidade
+
+- Todos os requests logam método, endpoint, status e duração com redaction automático (`cpf`, `token`, `celular`, etc.).
+- Ao receber `401/403`, o cliente reloga uma única vez e falha se o segundo ciclo repetir o erro (evitando loops).
