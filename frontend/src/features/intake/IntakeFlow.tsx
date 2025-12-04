@@ -10,6 +10,7 @@ import {
   ForeignStep,
   ModeStep,
   PatientStep,
+  PriorityStep,
   ReviewStep,
   ReasonStep,
   StepNavigation,
@@ -62,7 +63,7 @@ export function IntakeFlow({ onComplete }: IntakeFlowProps) {
   const methods = useForm<IntakeFormValues>({
     mode: 'onChange',
     defaultValues: DEFAULT_FORM_VALUES,
-    resolver: yupResolver(intakeSchema) as Resolver<IntakeFormValues>,
+    resolver: yupResolver(intakeSchema) as unknown as Resolver<IntakeFormValues>,
   })
   const [
     intakeMode,
@@ -349,6 +350,7 @@ export function IntakeFlow({ onComplete }: IntakeFlowProps) {
               values.birthDate,
               values.phone,
               convenioCode,
+              values.socialName && values.socialName.trim() !== '' ? values.socialName.trim() : undefined,
             )
           } catch (error) {
             console.error('Erro ao criar paciente', error)
@@ -379,7 +381,12 @@ export function IntakeFlow({ onComplete }: IntakeFlowProps) {
           specialtyId: values.specialtyId,
           reason: values.reason,
           npsScore: values.npsScore,
+          isPriority: values.isPriority,
           patientName: values.patientSelection === 'new' ? values.patientName : undefined,
+          socialName:
+            values.patientSelection === 'new' && values.socialName && values.socialName.trim() !== ''
+              ? values.socialName.trim()
+              : undefined,
           phone: values.patientSelection === 'new' ? values.phone : undefined,
         }
 
@@ -532,6 +539,8 @@ export function IntakeFlow({ onComplete }: IntakeFlowProps) {
     switch (stepDefinition.key) {
       case 'welcome':
         return <WelcomeStep onStart={handleWelcomeStart} />
+      case 'priority':
+        return <PriorityStep />
       case 'mode':
         return <ModeStep />
       case 'document':

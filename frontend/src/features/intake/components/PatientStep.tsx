@@ -37,6 +37,11 @@ export function PatientStep({ matches, status, onRetry }: PatientStepProps) {
   const selectedPatientId = watch('existingPatientId')
 
   const hasMatches = matches.length > 0
+
+  const hasValidSocialName = (socialName: string | undefined | null): boolean => {
+    if (socialName === null || socialName === undefined) return false
+    return socialName.trim() !== ''
+  }
   const heading = useMemo(() => {
     if (status === 'loading') return 'Buscando paciente...'
     if (hasMatches) return 'Confirme o paciente'
@@ -135,9 +140,23 @@ export function PatientStep({ matches, status, onRetry }: PatientStepProps) {
                 >
                   <ListItemText
                     primary={
-                      <Typography variant="subtitle1" component="span" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
-                        {match.name}
-                      </Typography>
+                      <Stack spacing={0.5}>
+                        <Typography variant="subtitle1" component="span" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
+                          {match.name}
+                        </Typography>
+                        {hasValidSocialName(match.socialName) ? (
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: isSelected ? 'rgba(255, 255, 255, 0.9)' : 'text.secondary',
+                              fontStyle: 'italic',
+                              lineHeight: 1.2,
+                            }}
+                          >
+                            Nome social: {match.socialName?.trim()}
+                          </Typography>
+                        ) : null}
+                      </Stack>
                     }
                     secondary={
                       <Typography
@@ -239,6 +258,21 @@ export function PatientStep({ matches, status, onRetry }: PatientStepProps) {
                 label="Nome completo do paciente"
                 placeholder="Nome e sobrenome"
                 autoFocus={!hasMatches}
+                error={Boolean(fieldState.error)}
+                helperText={fieldState.error?.message ?? ' '}
+                fullWidth
+                size="medium"
+              />
+            )}
+          />
+          <Controller
+            name="socialName"
+            control={control}
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                label="Nome social (opcional)"
+                placeholder="Nome social"
                 error={Boolean(fieldState.error)}
                 helperText={fieldState.error?.message ?? ' '}
                 fullWidth

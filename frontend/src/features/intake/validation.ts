@@ -86,6 +86,7 @@ const phoneSchema = yup
 export const intakeSchema = yup
   .object({
     intakeMode: intakeModeSchema,
+    isPriority: yup.boolean().required('Selecione o tipo de atendimento.'),
     cpf: cpfSchema,
     birthDate: birthDateSchema,
     lookupFirstName: lookupFirstNameSchema,
@@ -110,6 +111,11 @@ export const intakeSchema = yup
           ? schema.required('Informe o nome completo.')
           : schema.notRequired()
       }),
+    socialName: yup
+      .string()
+      .transform((value) => value?.trim() ?? '')
+      .max(120, 'Nome social muito longo.')
+      .default(''),
     phone: phoneSchema,
     foreignName: yup
       .string()

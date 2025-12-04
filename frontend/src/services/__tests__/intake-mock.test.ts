@@ -26,6 +26,7 @@ describe('Intake Service (Mock Mode)', () => {
     specialtyId: 'spec1',
     reason: 'Teste',
     npsScore: null,
+    isPriority: false,
   }
 
   describe('lookupPatients (Mock)', () => {

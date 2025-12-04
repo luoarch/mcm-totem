@@ -21,6 +21,7 @@ export type PatientMatch = {
   name: string
   document: string
   birthDate: string
+  socialName?: string
 }
 
 /**
@@ -33,6 +34,8 @@ export type MCPatientResponse = {
   cpf?: string
   nasci?: string
   celular?: string
+  email?: string
+  nomesocial?: string | null
 }
 
 export type MCConvenioResponse = {

@@ -27,6 +27,7 @@ const basePayload: IntakeSubmissionCpf = {
   specialtyId: 'spec1',
   reason: 'Dor de cabeça',
   npsScore: null,
+  isPriority: false,
 }
 
 describe('Intake Service', () => {
@@ -99,6 +100,36 @@ describe('Intake Service', () => {
 
       expect(result).toEqual([])
     })
+
+    it('should map socialName from nomesocial when present', async () => {
+      mockApiGet.mockResolvedValue({
+        data: [
+          {
+            nropaciente: 1,
+            nome: 'Maria',
+            cpf: '123',
+            nasci: '2023-01-01',
+            nomesocial: 'Mari',
+          },
+        ],
+      })
+      const { lookupPatients } = await importService()
+      const result = await lookupPatients('123', '2023-01-01')
+      expect(result[0].socialName).toBe('Mari')
+    })
+
+    it('should not include socialName when nomesocial is null or empty', async () => {
+      mockApiGet.mockResolvedValue({
+        data: [
+          { nropaciente: 1, nome: 'A', cpf: '123', nasci: '2023-01-01', nomesocial: null },
+          { nropaciente: 2, nome: 'B', cpf: '123', nasci: '2023-01-01', nomesocial: '' },
+          { nropaciente: 3, nome: 'C', cpf: '123', nasci: '2023-01-01', nomesocial: '   ' },
+        ],
+      })
+      const { lookupPatients } = await importService()
+      const result = await lookupPatients('123', '2023-01-01')
+      expect(result.every((p) => p.socialName === undefined)).toBe(true)
+    })
   })
 
   describe('createPatient', () => {
@@ -148,6 +179,28 @@ describe('Intake Service', () => {
 
       expect(id).toBe('mock-patient-1700000000000')
       expect(mockApiPost).not.toHaveBeenCalled()
+    })
+
+    it('should send nomesocial when socialName provided', async () => {
+      mockApiPost.mockResolvedValue({
+        data: { ok: true, nropac: 1 },
+      })
+      const { createPatient } = await importService()
+      await createPatient('123', 'Maria', '2023-01-01', '11999', 'conv1', 'Mari')
+
+      const params = mockApiPost.mock.calls[0][1] as URLSearchParams
+      expect(params.get('nomesocial')).toBe('Mari')
+    })
+
+    it('should not send nomesocial when socialName is empty or undefined', async () => {
+      mockApiPost.mockResolvedValue({
+        data: { ok: true, nropac: 1 },
+      })
+      const { createPatient } = await importService()
+      await createPatient('123', 'Maria', '2023-01-01', '11999', 'conv1')
+
+      const params = mockApiPost.mock.calls[0][1] as URLSearchParams
+      expect(params.has('nomesocial')).toBe(false)
     })
   })
 
@@ -251,6 +304,7 @@ describe('Intake Service', () => {
         nropaciente: 'pat1',
         tipo: 'e',
         integracaowhatsapp: 'S',
+        prioritario: 'N',
       })
     })
 
@@ -307,6 +361,36 @@ describe('Intake Service', () => {
       const params = mockApiPost.mock.calls[0][1] as URLSearchParams
       expect(params.get('convenio')).toBe('')
       expect(params.get('nropaciente')).toBe('pat1')
+    })
+
+    it('should send prioritario S when isPriority is true', async () => {
+      mockApiPost.mockResolvedValue({
+        status: 200,
+        data: { type: 'success' },
+      })
+      const { submitIntake } = await importService()
+      await submitIntake({
+        ...basePayload,
+        isPriority: true,
+      })
+
+      const params = mockApiPost.mock.calls[0][1] as URLSearchParams
+      expect(params.get('prioritario')).toBe('S')
+    })
+
+    it('should send prioritario N when isPriority is false', async () => {
+      mockApiPost.mockResolvedValue({
+        status: 200,
+        data: { type: 'success' },
+      })
+      const { submitIntake } = await importService()
+      await submitIntake({
+        ...basePayload,
+        isPriority: false,
+      })
+
+      const params = mockApiPost.mock.calls[0][1] as URLSearchParams
+      expect(params.get('prioritario')).toBe('N')
     })
   })
 })

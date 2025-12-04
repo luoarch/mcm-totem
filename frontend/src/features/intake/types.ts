@@ -9,6 +9,7 @@ export type IntakeMode = 'cpf' | 'foreign'
 
 export type IntakeStepKey =
   | 'welcome'
+  | 'priority'
   | 'mode'
   | 'document'
   | 'foreign'
@@ -23,12 +24,14 @@ export type PatientSelection = 'existing' | 'new'
 
 export type IntakeFormValues = {
   intakeMode: IntakeMode | null
+  isPriority: boolean
   cpf: string
   birthDate: string
   lookupFirstName: string
   patientSelection: PatientSelection
   existingPatientId?: string
   patientName: string
+  socialName: string
   phone: string
   foreignName: string
   foreignBirthDate: string
@@ -61,7 +64,9 @@ export type IntakeSubmissionCpf = {
   specialtyId: string
   reason: string
   npsScore: number | null
+  isPriority: boolean
   patientName?: string
+  socialName?: string
   phone?: string
 }
 
@@ -75,6 +80,7 @@ export type IntakeSubmissionForeign = {
   specialtyId: string
   reason: string
   npsScore: number | null
+  isPriority: boolean
   manualAssistance: true
 }
 

@@ -72,12 +72,23 @@ export async function lookupPatients(
       // Sort by nropaciente desc and map to PatientMatch
       const sorted = [...data].sort((a, b) => b.nropaciente - a.nropaciente)
 
-      return sorted.map((patient) => ({
-        id: patient.nropaciente.toString(),
-        name: patient.nome ?? '',
-        document: patient.cpf ?? sanitizedCpf,
-        birthDate: patient.nasci ?? birthDate,
-      }))
+      return sorted.map((patient) => {
+        const socialName =
+          patient.nomesocial !== null &&
+            patient.nomesocial !== undefined &&
+            typeof patient.nomesocial === 'string' &&
+            patient.nomesocial.trim() !== ''
+            ? patient.nomesocial.trim()
+            : undefined
+
+        return {
+          id: patient.nropaciente.toString(),
+          name: patient.nome ?? '',
+          document: patient.cpf ?? sanitizedCpf,
+          birthDate: patient.nasci ?? birthDate,
+          socialName,
+        }
+      })
     } catch (error) {
       console.error('Falha ao consultar pacientes', error)
       throw error
@@ -106,6 +117,7 @@ export async function lookupPatients(
  * @param birthDate - Birth date in ISO format (YYYY-MM-DD)
  * @param phone - Phone number (will be formatted to E.164)
  * @param convenioCode - Insurance/payer code
+ * @param socialName - Optional social name
  */
 export async function createPatient(
   cpf: string,
@@ -113,6 +125,7 @@ export async function createPatient(
   birthDate: string,
   phone: string,
   convenioCode: string,
+  socialName?: string,
 ): Promise<string> {
   const sanitizedCpf = stripCpf(cpf)
   const formattedPhone = formatPhoneE164(phone)
@@ -127,6 +140,9 @@ export async function createPatient(
       params.append('celular', formattedPhone)
       params.append('convenio', convenioCode)
       params.append('integracaowhatsapp', 'S')
+      if (socialName && socialName.trim() !== '') {
+        params.append('nomesocial', socialName.trim())
+      }
 
       const { data } = await apiClient.post<MCCreatePatientResponse>(
         '/pacientesautoage',
@@ -222,6 +238,7 @@ export async function submitIntake(payload: IntakeSubmissionCpf): Promise<void> 
       params.append('nropaciente', payload.patientId)
       params.append('tipo', 'e')
       params.append('integracaowhatsapp', 'S')
+      params.append('prioritario', payload.isPriority ? 'S' : 'N')
 
       const { data, status } = await apiClient.post<MCAtendimentoResponse>(
         '/atendimentoboletim',

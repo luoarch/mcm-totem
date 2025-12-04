@@ -33,12 +33,13 @@ Permitir que o Totem execute o fluxo completo de **autoatendimento**: (1) login,
 2. **Buscar paciente** (`GET /pacientesautoage`)
    - Params obrigatórios: `integracaowhatsapp=S`, `cpf`, `nasci`, `nome`.
    - Recomendado: `autoagendamento=true`; opcional `celular`.
+   - Resposta inclui: `nropaciente`, `nome`, `cpf`, `nasci`, `celular`, `email`, `nomesocial` (opcional).
    - Se lista vazia → seguir para convênios e criação.
 3. **Listar convênios** (`GET /convenios`)
    - Params: `permiteagweb=S`, `integracaowhatsapp=S`, `codempresa` (usar `codacesso` do login ou valor acordado).
    - Mostrar `nomefantasia` (fallback `razaosocial`). Salvar `convenioCode`.
 4. **Criar paciente** (`POST /pacientesautoage`) – somente se etapa 2 não encontrou paciente.
-   - Body: `cpf`, `nome`, `nasci`, `celular`, `convenio=convenioCode`, `integracaowhatsapp=S`.
+   - Body: `cpf`, `nome`, `nasci`, `celular`, `convenio=convenioCode`, `integracaowhatsapp=S`, `nomesocial` (opcional).
    - Sucesso (`ok=true`) retorna `nropac` → `patientId`.
 5. **Listar especialidades** (`GET /especialidades`)
    - Params: `permiteagweb=S`, `integracaowhatsapp=S`, `codempresa`.

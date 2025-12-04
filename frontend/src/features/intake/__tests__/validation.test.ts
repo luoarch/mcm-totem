@@ -5,12 +5,14 @@ import { ValidationError } from 'yup'
 describe('Intake Validation', () => {
   const validBase = {
     intakeMode: 'cpf',
+    isPriority: false,
     cpf: '52998224725', // Valid generated CPF
     birthDate: '1990-01-01',
     lookupFirstName: 'Maria',
     patientSelection: 'existing',
     existingPatientId: '123',
     patientName: 'Maria Silva',
+    socialName: '',
     phone: '11999999999',
     coverageType: 'particular',
     specialtyId: 'clinico-geral',

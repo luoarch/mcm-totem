@@ -8,6 +8,7 @@ import type {
 } from './types'
 
 const WELCOME_STEP: IntakeStepDefinition = { key: 'welcome', label: 'Bem-vindo' }
+const PRIORITY_STEP: IntakeStepDefinition = { key: 'priority', label: 'Tipo de Atendimento' }
 const MODE_STEP: IntakeStepDefinition = { key: 'mode', label: 'Início' }
 const CPF_IDENTIFICATION_STEP: IntakeStepDefinition = {
   key: 'document',
@@ -31,6 +32,7 @@ export const getIntakeSteps = (mode: IntakeMode | null): IntakeStepDefinition[] 
   if (mode === 'foreign') {
     return [
       WELCOME_STEP,
+      PRIORITY_STEP,
       MODE_STEP,
       FOREIGN_STEP,
       COVERAGE_STEP,
@@ -43,6 +45,7 @@ export const getIntakeSteps = (mode: IntakeMode | null): IntakeStepDefinition[] 
 
   return [
     WELCOME_STEP,
+    PRIORITY_STEP,
     MODE_STEP,
     CPF_IDENTIFICATION_STEP,
     PATIENT_STEP,
@@ -56,10 +59,11 @@ export const getIntakeSteps = (mode: IntakeMode | null): IntakeStepDefinition[] 
 
 export const STEP_FIELD_MAP: Record<IntakeStepKey, FieldPath<IntakeFormValues>[]> = {
   welcome: [],
+  priority: ['isPriority'],
   mode: ['intakeMode'],
   document: ['cpf', 'birthDate', 'lookupFirstName'],
   foreign: ['foreignName', 'foreignBirthDate', 'foreignEmail'],
-  patient: ['patientSelection', 'existingPatientId', 'patientName', 'phone'],
+  patient: ['patientSelection', 'existingPatientId', 'patientName', 'socialName', 'phone'],
   coverage: ['coverageType', 'convenioId'],
   specialty: ['specialtyId'],
   reason: ['reason'],
@@ -69,12 +73,14 @@ export const STEP_FIELD_MAP: Record<IntakeStepKey, FieldPath<IntakeFormValues>[]
 
 export const DEFAULT_FORM_VALUES: IntakeFormValues = {
   intakeMode: null,
+  isPriority: false,
   cpf: '',
   birthDate: '',
   lookupFirstName: '',
   patientSelection: 'existing',
   existingPatientId: undefined,
   patientName: '',
+  socialName: '',
   phone: '',
   foreignName: '',
   foreignBirthDate: '',
