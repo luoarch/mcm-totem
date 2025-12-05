@@ -14,6 +14,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQueueUpdates } from './useQueueUpdates'
 import type { QueueEntry } from './types'
 import chimeUrl from './assets/chime.mp3'
+import { logWarning } from '../../utils/logger'
 
 const timeFormatter = new Intl.DateTimeFormat('pt-BR', {
   hour: '2-digit',
@@ -43,7 +44,7 @@ export function QueuePanel() {
   useEffect(() => {
     if (hasCallChange && audioRef.current && soundEnabled) {
       void audioRef.current.play().catch((error) => {
-        console.warn('Falha ao reproduzir alerta sonoro', error)
+        logWarning('Falha ao reproduzir alerta sonoro', { error })
       })
     }
     if (current) {

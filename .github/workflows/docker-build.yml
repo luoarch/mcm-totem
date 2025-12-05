@@ -1,0 +1,42 @@
+name: Docker Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: mcm-totem
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: false
+          tags: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          build-args: |
+            VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}
+            VITE_API_TIMEOUT_MS=10000
+            VITE_TOTEM_USERNAME=${{ secrets.VITE_TOTEM_USERNAME }}
+            VITE_TOTEM_PASSWORD=${{ secrets.VITE_TOTEM_PASSWORD }}
+            VITE_TOTEM_EMPRESA=${{ secrets.VITE_TOTEM_EMPRESA }}
+            VITE_PANEL_WS_URL=${{ secrets.VITE_PANEL_WS_URL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify build success
+        run: echo "Docker image built successfully"

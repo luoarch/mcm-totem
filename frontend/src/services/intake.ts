@@ -16,6 +16,15 @@ import { stripCpf } from '../utils/cpf'
 import { formatPhoneE164 } from '../utils/phone'
 import { isoToSearchFormat, isoToCreationFormat } from '../utils/date'
 import { extractFirstName } from '../utils/name'
+import { logError } from '../utils/logger'
+import {
+  validateApiResponse,
+  mcPatientResponseSchema,
+  mcConvenioResponseSchema,
+  mcEspecialidadeResponseSchema,
+  mcCreatePatientResponseSchema,
+  mcAtendimentoResponseSchema,
+} from './api-validation'
 
 const fallbackConvenios: PayerOption[] = [
   { id: 'particular', name: 'Particular' },
@@ -69,8 +78,15 @@ export async function lookupPatients(
         params,
       })
 
+      // Validate response structure
+      if (!Array.isArray(data)) {
+        throw new Error('Resposta da API de pacientes não é um array')
+      }
+
+      const validatedData = data.map((item) => validateApiResponse(item, mcPatientResponseSchema, 'paciente'))
+
       // Sort by nropaciente desc and map to PatientMatch
-      const sorted = [...data].sort((a, b) => b.nropaciente - a.nropaciente)
+      const sorted = [...validatedData].sort((a, b) => b.nropaciente - a.nropaciente)
 
       return sorted.map((patient) => {
         const socialName =
@@ -90,7 +106,7 @@ export async function lookupPatients(
         }
       })
     } catch (error) {
-      console.error('Falha ao consultar pacientes', error)
+      logError('Falha ao consultar pacientes', error)
       throw error
     }
   }
@@ -154,15 +170,17 @@ export async function createPatient(
         },
       )
 
-      if (data.ok && data.nropac) {
-        return data.nropac.toString()
+      const validatedData = validateApiResponse(data, mcCreatePatientResponseSchema, 'criação de paciente')
+
+      if (validatedData.ok && validatedData.nropac) {
+        return validatedData.nropac.toString()
       }
 
       throw new Error(
-        data.message ?? data.error ?? 'Falha ao criar paciente. Verifique os dados e tente novamente.',
+        validatedData.message ?? validatedData.error ?? 'Falha ao criar paciente. Verifique os dados e tente novamente.',
       )
     } catch (error) {
-      console.error('Falha ao criar paciente', error)
+      logError('Falha ao criar paciente', error)
       throw error
     }
   }
@@ -185,12 +203,19 @@ export async function listConvenios(): Promise<PayerOption[]> {
         },
       })
 
-      return data.map((convenio) => ({
+      // Validate response structure
+      if (!Array.isArray(data)) {
+        throw new Error('Resposta da API de convênios não é um array')
+      }
+
+      const validatedData = data.map((item) => validateApiResponse(item, mcConvenioResponseSchema, 'convênio'))
+
+      return validatedData.map((convenio) => ({
         id: convenio.convenio,
         name: convenio.nomefantasia || convenio.razaosocial || convenio.convenio,
       }))
     } catch (error) {
-      console.error('Falha ao carregar convênios', error)
+      logError('Falha ao carregar convênios', error)
       throw error
     }
   }
@@ -212,12 +237,19 @@ export async function listSpecialties(): Promise<SpecialtyOption[]> {
         },
       })
 
-      return data.map((esp) => ({
+      // Validate response structure
+      if (!Array.isArray(data)) {
+        throw new Error('Resposta da API de especialidades não é um array')
+      }
+
+      const validatedData = data.map((item) => validateApiResponse(item, mcEspecialidadeResponseSchema, 'especialidade'))
+
+      return validatedData.map((esp) => ({
         id: esp.especialidade,
         name: esp.descricao,
       }))
     } catch (error) {
-      console.error('Falha ao carregar especialidades', error)
+      logError('Falha ao carregar especialidades', error)
       throw error
     }
   }
@@ -250,16 +282,18 @@ export async function submitIntake(payload: IntakeSubmissionCpf): Promise<void> 
         },
       )
 
+      const validatedData = validateApiResponse(data, mcAtendimentoResponseSchema, 'atendimento')
+
       // Success criteria: HTTP 200 AND type === "success"
-      if (status === 200 && data.type === 'success') {
+      if (status === 200 && validatedData.type === 'success') {
         return
       }
 
       throw new Error(
-        data.message ?? 'Não foi possível gerar o atendimento. Por favor, procure ajuda no balcão.',
+        validatedData.message ?? 'Não foi possível gerar o atendimento. Por favor, procure ajuda no balcão.',
       )
     } catch (error) {
-      console.error('Falha ao criar atendimento', error)
+      logError('Falha ao criar atendimento', error)
       throw error
     }
   }

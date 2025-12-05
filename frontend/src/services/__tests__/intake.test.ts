@@ -130,6 +130,40 @@ describe('Intake Service', () => {
       const result = await lookupPatients('123', '2023-01-01')
       expect(result.every((p) => p.socialName === undefined)).toBe(true)
     })
+
+    it('should handle empty array response', async () => {
+      mockApiGet.mockResolvedValue({ data: [] })
+      const { lookupPatients } = await importService()
+      const result = await lookupPatients('123', '2023-01-01')
+      expect(result).toEqual([])
+    })
+
+    it('should handle missing optional fields in response', async () => {
+      mockApiGet.mockResolvedValue({
+        data: [
+          { nropaciente: 1, nome: 'Maria' },
+          { nropaciente: 2, cpf: '12345678900' },
+        ],
+      })
+      const { lookupPatients } = await importService()
+      const result = await lookupPatients('123', '2023-01-01')
+      expect(result).toHaveLength(2)
+      expect(result[0].name).toBe('')
+      expect(result[0].document).toBe('12345678900')
+      expect(result[0].birthDate).toBe('2023-01-01')
+      expect(result[1].name).toBe('Maria')
+      expect(result[1].document).toBe('123')
+      expect(result[1].birthDate).toBe('2023-01-01')
+    })
+
+    it('should handle response with numeric convenio', async () => {
+      mockApiGet.mockResolvedValue({
+        data: [{ convenio: 123, nomefantasia: 'Test' }],
+      })
+      const { listConvenios } = await importService()
+      const result = await listConvenios()
+      expect(result[0].id).toBe('123')
+    })
   })
 
   describe('createPatient', () => {
@@ -202,6 +236,30 @@ describe('Intake Service', () => {
       const params = mockApiPost.mock.calls[0][1] as URLSearchParams
       expect(params.has('nomesocial')).toBe(false)
     })
+
+    it('should handle response with msg field instead of message', async () => {
+      mockApiPost.mockResolvedValue({
+        data: { ok: false, msg: 'Error message' },
+      })
+      const { createPatient } = await importService()
+      await expect(createPatient('123', 'Maria', '2023', '11', 'c')).rejects.toThrow('Error message')
+    })
+
+    it('should handle response with error field', async () => {
+      mockApiPost.mockResolvedValue({
+        data: { ok: false, error: 'Error occurred' },
+      })
+      const { createPatient } = await importService()
+      await expect(createPatient('123', 'Maria', '2023', '11', 'c')).rejects.toThrow('Error occurred')
+    })
+
+    it('should handle response without nropac when ok is true', async () => {
+      mockApiPost.mockResolvedValue({
+        data: { ok: true },
+      })
+      const { createPatient } = await importService()
+      await expect(createPatient('123', 'Maria', '2023', '11', 'c')).rejects.toThrow()
+    })
   })
 
   describe('listConvenios', () => {
@@ -225,6 +283,33 @@ describe('Intake Service', () => {
       const result = await listConvenios()
 
       expect(result).toEqual([{ id: '2', name: 'Hospital XPTO' }])
+    })
+
+    it('falls back to convenio code when both nomefantasia and razaosocial are missing', async () => {
+      mockApiGet.mockResolvedValue({
+        data: [{ convenio: '999' }],
+      })
+
+      const { listConvenios } = await importService()
+      const result = await listConvenios()
+
+      expect(result).toEqual([{ id: '999', name: '999' }])
+    })
+
+    it('should handle empty array response', async () => {
+      mockApiGet.mockResolvedValue({ data: [] })
+      const { listConvenios } = await importService()
+      const result = await listConvenios()
+      expect(result).toEqual([])
+    })
+
+    it('should handle response with numeric convenio', async () => {
+      mockApiGet.mockResolvedValue({
+        data: [{ convenio: 123, nomefantasia: 'Test' }],
+      })
+      const { listConvenios } = await importService()
+      const result = await listConvenios()
+      expect(result[0].id).toBe('123')
     })
 
     it('should handle API errors', async () => {
@@ -260,6 +345,22 @@ describe('Intake Service', () => {
       mockApiGet.mockRejectedValue(new Error('API error'))
       const { listSpecialties } = await importService()
       await expect(listSpecialties()).rejects.toThrow('API error')
+    })
+
+    it('should handle empty array response', async () => {
+      mockApiGet.mockResolvedValue({ data: [] })
+      const { listSpecialties } = await importService()
+      const result = await listSpecialties()
+      expect(result).toEqual([])
+    })
+
+    it('should handle response with numeric especialidade', async () => {
+      mockApiGet.mockResolvedValue({
+        data: [{ especialidade: 456, descricao: 'Test Specialty' }],
+      })
+      const { listSpecialties } = await importService()
+      const result = await listSpecialties()
+      expect(result[0].id).toBe('456')
     })
 
     it('returns fallback specialties when API disabled', async () => {
@@ -391,6 +492,48 @@ describe('Intake Service', () => {
 
       const params = mockApiPost.mock.calls[0][1] as URLSearchParams
       expect(params.get('prioritario')).toBe('N')
+    })
+
+    it('should handle response with msg field instead of message', async () => {
+      mockApiPost.mockResolvedValue({
+        status: 200,
+        data: { type: 'error', msg: 'Error msg' },
+      })
+      const { submitIntake } = await importService()
+      await expect(submitIntake(basePayload)).rejects.toThrow('Error msg')
+    })
+
+    it('should throw default message when response has no message', async () => {
+      mockApiPost.mockResolvedValue({
+        status: 200,
+        data: { type: 'error' },
+      })
+      const { submitIntake } = await importService()
+      await expect(submitIntake(basePayload)).rejects.toThrow()
+    })
+
+    it('should handle invalid response format', async () => {
+      mockApiGet.mockResolvedValue({
+        data: 'invalid',
+      })
+      const { lookupPatients } = await importService()
+      await expect(lookupPatients('123', '2023-01-01')).rejects.toThrow()
+    })
+
+    it('should handle invalid convenios response format', async () => {
+      mockApiGet.mockResolvedValue({
+        data: 'invalid',
+      })
+      const { listConvenios } = await importService()
+      await expect(listConvenios()).rejects.toThrow()
+    })
+
+    it('should handle invalid specialties response format', async () => {
+      mockApiGet.mockResolvedValue({
+        data: 'invalid',
+      })
+      const { listSpecialties } = await importService()
+      await expect(listSpecialties()).rejects.toThrow()
     })
   })
 })

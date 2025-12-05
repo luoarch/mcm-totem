@@ -2,6 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { IS_API_CONFIGURED, PANEL_WS_URL } from '../../config/api'
 import { apiClient } from '../../services/http'
 import type { QueueEntry, QueuePanelState } from './types'
+import { logError } from '../../utils/logger'
+import {
+  queueEntriesSchema,
+  validateApiResponse,
+} from '../../services/api-validation'
 
 type UseQueueUpdatesOptions = {
   refreshIntervalMs?: number
@@ -58,13 +63,18 @@ export function useQueueUpdates(
 
     const loadQueue = async () => {
       try {
-        const { data } = await apiClient.get<QueueEntry[]>('/queue/panel')
+        const { data } = await apiClient.get<unknown>('/queue/panel')
         if (!isMounted) return
-        setState({ entries: data, lastUpdatedAt: Date.now() })
+        const validatedEntries = validateApiResponse(
+          data,
+          queueEntriesSchema,
+          'fila de atendimento',
+        )
+        setState({ entries: validatedEntries, lastUpdatedAt: Date.now() })
         setError(null)
       } catch (requestError) {
         if (!isMounted) return
-        console.error('Falha ao consultar fila de atendimento', requestError)
+        logError('Falha ao consultar fila de atendimento', requestError)
         if (!IS_API_CONFIGURED) {
           setState({ entries: MOCK_QUEUE, lastUpdatedAt: Date.now() })
         }
@@ -104,11 +114,17 @@ export function useQueueUpdates(
 
     socket.addEventListener('message', (event) => {
       try {
-        const payload = JSON.parse(event.data) as QueueEntry[]
-        setState({ entries: payload, lastUpdatedAt: Date.now() })
+        const rawData = JSON.parse(event.data)
+        const validatedEntries = validateApiResponse(
+          rawData,
+          queueEntriesSchema,
+          'fila de atendimento via WebSocket',
+        )
+        setState({ entries: validatedEntries, lastUpdatedAt: Date.now() })
         setError(null)
       } catch (parseError) {
-        console.error('Falha ao analisar atualização da fila', parseError)
+        logError('Falha ao validar atualização da fila via WebSocket', parseError)
+        setError('Dados recebidos do servidor são inválidos.')
       }
     })
 

@@ -41,8 +41,11 @@ export function formatPhoneE164(value: string): string {
 export function isValidBrazilianPhone(value: string): boolean {
   const digits = stripPhone(value)
 
-  // Check DDD (first 2 digits)
-  const ddd = parseInt(digits.slice(digits.startsWith(BRAZIL_COUNTRY_CODE) ? 2 : 0, digits.startsWith(BRAZIL_COUNTRY_CODE) ? 4 : 2))
+  // Check DDD (first 2 digits after country code if present)
+  const hasCountryCode = digits.startsWith(BRAZIL_COUNTRY_CODE)
+  const dddStart = hasCountryCode ? 2 : 0
+  const dddEnd = hasCountryCode ? 4 : 2
+  const ddd = parseInt(digits.slice(dddStart, dddEnd), 10)
   if (ddd < 11 || ddd > 99) {
     return false
   }

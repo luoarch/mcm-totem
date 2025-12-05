@@ -157,5 +157,120 @@ describe('auth service', () => {
     await expect(firstPromise).resolves.toBe('jwt-token')
     await expect(secondPromise).resolves.toBe('jwt-token')
   })
+
+  it('handles response without expiresIn and defaults to 1 hour', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2024-01-01T00:00:00Z'))
+    axiosPostMock.mockResolvedValue({
+      data: { token: 'jwt-token', codacesso: 'COD123' },
+    })
+    const { ensureTotemSession, getCurrentToken } = await loadAuthModule()
+
+    await ensureTotemSession()
+    expect(getCurrentToken()).toBe('jwt-token')
+
+    vi.setSystemTime(new Date('2024-01-01T01:00:00Z'))
+    expect(getCurrentToken()).toBeNull()
+  })
+
+  it('handles response without codacesso', async () => {
+    axiosPostMock.mockResolvedValue({
+      data: { token: 'jwt-token', expiresIn: 3600 },
+    })
+    const { ensureTotemSession, getCompanyCode } = await loadAuthModule()
+
+    await ensureTotemSession()
+    expect(getCompanyCode()).toBe(configState.TOTEM_EMPRESA)
+  })
+
+  it('handles authentication failure', async () => {
+    axiosPostMock.mockRejectedValue(new Error('Authentication failed'))
+    const { ensureTotemSession, getCurrentToken } = await loadAuthModule()
+
+    const token = await ensureTotemSession()
+
+    expect(token).toBeNull()
+    expect(getCurrentToken()).toBeNull()
+  })
+
+  it('handles token expiration during use', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2024-01-01T00:00:00Z'))
+    axiosPostMock.mockResolvedValue({
+      data: { token: 'jwt-token', expiresIn: 3600 },
+    })
+    const { ensureTotemSession, getCurrentToken } = await loadAuthModule()
+
+    await ensureTotemSession()
+    expect(getCurrentToken()).toBe('jwt-token')
+
+    vi.setSystemTime(new Date('2024-01-01T01:00:00Z'))
+    expect(getCurrentToken()).toBeNull()
+
+    axiosPostMock.mockResolvedValue({
+      data: { token: 'new-token', expiresIn: 3600 },
+    })
+    const newToken = await ensureTotemSession()
+    expect(newToken).toBe('new-token')
+    expect(axiosPostMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('handles race condition when token expires during concurrent requests', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2024-01-01T00:00:00Z'))
+    axiosPostMock.mockResolvedValue({
+      data: { token: 'jwt-token', expiresIn: 3600 },
+    })
+    const { ensureTotemSession, getCurrentToken } = await loadAuthModule()
+
+    await ensureTotemSession()
+    expect(getCurrentToken()).toBe('jwt-token')
+
+    vi.setSystemTime(new Date('2024-01-01T01:00:00Z'))
+
+    let resolveRequest!: (value: { data: { token: string } }) => void
+    const requestPromise = new Promise<{ data: { token: string } }>((resolve) => {
+      resolveRequest = resolve as (value: { data: { token: string } }) => void
+    })
+    axiosPostMock.mockReturnValue(requestPromise)
+
+    const promise1 = ensureTotemSession()
+    const promise2 = ensureTotemSession()
+
+    expect(axiosPostMock).toHaveBeenCalledTimes(2)
+    resolveRequest({ data: { token: 'new-token' } })
+
+    await expect(promise1).resolves.toBe('new-token')
+    await expect(promise2).resolves.toBe('new-token')
+  })
+
+  it('handles missing TOTEM_EMPRESA config', async () => {
+    configState.TOTEM_EMPRESA = ''
+    axiosPostMock.mockResolvedValue({
+      data: { token: 'jwt-token', expiresIn: 3600 },
+    })
+    const { ensureTotemSession, getCompanyCode } = await loadAuthModule()
+
+    await ensureTotemSession()
+    expect(getCompanyCode()).toBe('')
+  })
+
+  it('applies 5 second buffer to expiration time', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2024-01-01T00:00:00Z'))
+    axiosPostMock.mockResolvedValue({
+      data: { token: 'jwt-token', expiresIn: 3600 },
+    })
+    const { ensureTotemSession, getCurrentToken } = await loadAuthModule()
+
+    await ensureTotemSession()
+    expect(getCurrentToken()).toBe('jwt-token')
+
+    vi.setSystemTime(new Date('2024-01-01T00:59:54Z'))
+    expect(getCurrentToken()).toBe('jwt-token')
+
+    vi.setSystemTime(new Date('2024-01-01T00:59:55Z'))
+    expect(getCurrentToken()).toBeNull()
+  })
 })
 

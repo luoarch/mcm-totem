@@ -217,5 +217,89 @@ describe('http service interceptors', () => {
     expect(clearTotemSessionMock).toHaveBeenCalledTimes(1)
     expect(ensureTotemSessionMock).not.toHaveBeenCalled()
   })
+
+  it('handles multiple simultaneous requests with shared refresh promise', async () => {
+    let resolveRefresh!: (value: string | null) => void
+    const refreshPromise = new Promise<string | null>((resolve) => {
+      resolveRefresh = resolve
+    })
+    ensureTotemSessionMock.mockReturnValue(refreshPromise)
+    mockAxiosInstance.mockResolvedValue({ data: { success: true } })
+
+    const error1 = {
+      response: { status: 401 },
+      config: { headers: {}, _retry: false },
+    } as AxiosError & { config: InternalAxiosRequestConfig & { _retry?: boolean } }
+
+    const error2 = {
+      response: { status: 401 },
+      config: { headers: {}, _retry: false },
+    } as AxiosError & { config: InternalAxiosRequestConfig & { _retry?: boolean } }
+
+    const promise1 = callResponseErrorInterceptor(error1 as AxiosError)
+    const promise2 = callResponseErrorInterceptor(error2 as AxiosError)
+
+    resolveRefresh('shared-token')
+
+    await Promise.all([promise1, promise2])
+
+    expect(ensureTotemSessionMock).toHaveBeenCalledTimes(1)
+    expect(mockAxiosInstance).toHaveBeenCalledTimes(2)
+  })
+
+  it('handles errors without response object', async () => {
+    const error = {
+      message: 'Network Error',
+      config: { headers: {} },
+    } as AxiosError
+
+    await expect(callResponseErrorInterceptor(error)).rejects.toBe(error)
+    expect(clearTotemSessionMock).not.toHaveBeenCalled()
+    expect(ensureTotemSessionMock).not.toHaveBeenCalled()
+  })
+
+  it('handles errors without config object', async () => {
+    const error = {
+      response: { status: 401 },
+    } as AxiosError
+
+    await expect(callResponseErrorInterceptor(error)).rejects.toBe(error)
+    expect(clearTotemSessionMock).not.toHaveBeenCalled()
+  })
+
+  it('handles 500 status code without retry', async () => {
+    const error = {
+      response: { status: 500 },
+      config: { headers: {} },
+    } as AxiosError
+
+    await expect(callResponseErrorInterceptor(error)).rejects.toBe(error)
+    expect(clearTotemSessionMock).not.toHaveBeenCalled()
+    expect(ensureTotemSessionMock).not.toHaveBeenCalled()
+  })
+
+  it('handles refresh error and rejects original error', async () => {
+    const refreshError = new Error('Refresh failed')
+    ensureTotemSessionMock.mockRejectedValue(refreshError)
+    const error = {
+      response: { status: 401 },
+      config: { headers: {}, _retry: false },
+    } as AxiosError & { config: InternalAxiosRequestConfig & { _retry?: boolean } }
+
+    await expect(callResponseErrorInterceptor(error as AxiosError)).rejects.toBe(error)
+    expect(clearTotemSessionMock).toHaveBeenCalled()
+    expect(mockAxiosInstance).not.toHaveBeenCalled()
+  })
+
+  it('handles case when refresh returns null token', async () => {
+    ensureTotemSessionMock.mockResolvedValue(null)
+    const error = {
+      response: { status: 401 },
+      config: { headers: {}, _retry: false },
+    } as AxiosError & { config: InternalAxiosRequestConfig & { _retry?: boolean } }
+
+    await expect(callResponseErrorInterceptor(error as AxiosError)).rejects.toBe(error)
+    expect(mockAxiosInstance).not.toHaveBeenCalled()
+  })
 })
 

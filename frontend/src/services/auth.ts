@@ -7,6 +7,7 @@ import {
   TOTEM_USERNAME,
   TOTEM_EMPRESA,
 } from '../config/api'
+import { logError, logWarning } from '../utils/logger'
 
 type MCAuthResponse = {
   token: string
@@ -63,14 +64,14 @@ export async function ensureTotemSession(): Promise<string | null> {
 
 async function authenticateTotemUser(): Promise<string | null> {
   if (!TOTEM_USERNAME || !TOTEM_PASSWORD) {
-    console.warn(
+    logWarning(
       'Credenciais do usuário totem não configuradas. Defina VITE_TOTEM_USERNAME e VITE_TOTEM_PASSWORD.',
     )
     return null
   }
 
   if (!TOTEM_EMPRESA) {
-    console.warn(
+    logWarning(
       'Código da empresa não configurado. Defina VITE_TOTEM_EMPRESA.',
     )
   }
@@ -107,7 +108,7 @@ async function authenticateTotemUser(): Promise<string | null> {
 
     return cachedToken
   } catch (error) {
-    console.error('Falha ao autenticar usuário do totem', error)
+    logError('Falha ao autenticar usuário do totem', error)
     cachedToken = null
     codacesso = null
     tokenExpiration = null

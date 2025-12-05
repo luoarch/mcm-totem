@@ -42,6 +42,7 @@ import { useInactivityTimeout } from '../../core/useInactivityTimeout'
 import { INACTIVITY_TIMEOUT_MS } from '../../config/app'
 import { SURVEY_FORM_URL } from '../../config/survey'
 import { createMaskedIdentifier } from '../../utils/identifier'
+import { logError } from '../../utils/logger'
 
 type IntakeFlowProps = {
   onComplete?: (payload: IntakeSubmissionCpf) => Promise<void> | void
@@ -178,7 +179,7 @@ export function IntakeFlow({ onComplete }: IntakeFlowProps) {
       if (staticDataRequestId.current !== requestId) {
         return
       }
-      console.error('Erro ao carregar dados iniciais', error)
+      logError('Erro ao carregar dados iniciais', error)
       setStaticDataError('Não foi possível carregar convênios e especialidades. Tente novamente.')
     }
   }, [])
@@ -222,7 +223,7 @@ export function IntakeFlow({ onComplete }: IntakeFlowProps) {
       if (lookupRequestId.current !== requestId) {
         return
       }
-      console.error('Falha ao consultar paciente', error)
+      logError('Falha ao consultar paciente', error)
       setLookupStatus('error')
       setMatches([])
       methods.setValue('patientSelection', 'new')
@@ -258,11 +259,15 @@ export function IntakeFlow({ onComplete }: IntakeFlowProps) {
     if (coverageType !== 'particular' || !defaultConvenioId) {
       return
     }
+    const isValidConvenio = convenios.some((c) => c.id === defaultConvenioId)
+    if (!isValidConvenio) {
+      return
+    }
     const currentConvenio = methods.getValues('convenioId')
     if (!currentConvenio) {
       methods.setValue('convenioId', defaultConvenioId, { shouldValidate: false })
     }
-  }, [coverageType, defaultConvenioId, methods])
+  }, [coverageType, defaultConvenioId, convenios, methods])
 
   const handleTimeoutReset = useCallback(() => {
     window.location.reload()
@@ -353,7 +358,7 @@ export function IntakeFlow({ onComplete }: IntakeFlowProps) {
               values.socialName && values.socialName.trim() !== '' ? values.socialName.trim() : undefined,
             )
           } catch (error) {
-            console.error('Erro ao criar paciente', error)
+            logError('Erro ao criar paciente', error)
             setSubmitError(
               'Não foi possível criar o cadastro do paciente. Verifique os dados e tente novamente.',
             )
@@ -426,7 +431,7 @@ export function IntakeFlow({ onComplete }: IntakeFlowProps) {
         setIsSubmitting(false)
         setActiveStep((prev) => Math.min(prev + 1, stepsCount - 1))
       } catch (error) {
-        console.error('Erro durante envio do atendimento', error)
+        logError('Erro durante envio do atendimento', error)
         setSubmitError(
           'Não foi possível registrar o atendimento. Tente novamente ou chame um atendente.',
         )

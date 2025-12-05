@@ -1,3 +1,17 @@
+# =============================================================================
+# MCM Totem - Multi-stage Docker Build
+# =============================================================================
+# Build arguments (VITE_*) are injected at build time and baked into the JS bundle.
+# In production, pass these via GitHub Secrets in your CI/CD workflow.
+#
+# Example GitHub Actions usage:
+#   docker build \
+#     --build-arg VITE_TOTEM_USERNAME="${{ secrets.VITE_TOTEM_USERNAME }}" \
+#     --build-arg VITE_TOTEM_PASSWORD="${{ secrets.VITE_TOTEM_PASSWORD }}" \
+#     --build-arg VITE_TOTEM_EMPRESA="${{ secrets.VITE_TOTEM_EMPRESA }}" \
+#     -f frontend/Dockerfile .
+# =============================================================================
+
 # Stage 1: Builder
 FROM node:24-alpine AS builder
 
@@ -18,15 +32,25 @@ RUN yarn install --frozen-lockfile --network-timeout 100000
 # Copy frontend source code
 COPY frontend/ ./frontend/
 
-# Build arguments for VITE_* variables (build-time only)
-ARG VITE_API_BASE_URL
-ARG VITE_API_TIMEOUT_MS
+# -----------------------------------------------------------------------------
+# Build arguments for VITE_* variables
+# These are injected at build time and become part of the JavaScript bundle.
+# For production, use GitHub Secrets to pass these values securely.
+# -----------------------------------------------------------------------------
+
+# API Configuration (can use defaults)
+ARG VITE_API_BASE_URL=https://gestaosaude.mcinfor-saude.net.br
+ARG VITE_API_TIMEOUT_MS=10000
+
+# Authentication - REQUIRED for production (no defaults for security)
 ARG VITE_TOTEM_USERNAME
 ARG VITE_TOTEM_PASSWORD
 ARG VITE_TOTEM_EMPRESA
+
+# Optional: Panel WebSocket URL
 ARG VITE_PANEL_WS_URL
 
-# Set environment variables for build
+# Set environment variables for Vite build
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 ENV VITE_API_TIMEOUT_MS=${VITE_API_TIMEOUT_MS}
 ENV VITE_TOTEM_USERNAME=${VITE_TOTEM_USERNAME}
@@ -38,7 +62,9 @@ ENV VITE_PANEL_WS_URL=${VITE_PANEL_WS_URL}
 WORKDIR /app/frontend
 RUN yarn build
 
-# Stage 2: Production
+# =============================================================================
+# Stage 2: Production (nginx)
+# =============================================================================
 FROM nginx:alpine
 
 # Install wget for healthcheck
@@ -58,10 +84,10 @@ RUN chown -R nginx:nginx /usr/share/nginx/html && \
     touch /var/run/nginx.pid && \
     chown -R nginx:nginx /var/run/nginx.pid
 
-# Switch to non-root user
+# Switch to non-root user (security best practice)
 USER nginx
 
-# Expose port 8080 (non-root)
+# Expose port 8080 (non-privileged port for non-root user)
 EXPOSE 8080
 
 # Health check
@@ -70,4 +96,3 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]
-

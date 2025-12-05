@@ -7,6 +7,8 @@ type RetriableConfig = InternalAxiosRequestConfig & {
   _retry?: boolean
 }
 
+let refreshPromise: Promise<string | null> | null = null
+
 export const apiClient = axios.create({
   baseURL: IS_API_CONFIGURED ? API_BASE_URL : undefined,
   timeout: API_TIMEOUT,
@@ -38,17 +40,39 @@ apiClient.interceptors.response.use(
     // Handle both 401 (Unauthorized) and 403 (Forbidden) for token refresh
     if ((response?.status === 401 || response?.status === 403) && config) {
       const retriableConfig = config as RetriableConfig
+
+      // If already retried, clear session and reject
       if (retriableConfig._retry) {
         clearTotemSession()
+        refreshPromise = null
         return Promise.reject(error)
       }
 
       retriableConfig._retry = true
-      clearTotemSession()
-      const token = await ensureTotemSession()
-      if (token) {
-        retriableConfig.headers.Authorization = `Bearer ${token}`
-        return apiClient(retriableConfig)
+
+      // Use shared promise to prevent multiple simultaneous refresh attempts
+      if (!refreshPromise) {
+        clearTotemSession()
+        refreshPromise = ensureTotemSession()
+          .then((token) => {
+            refreshPromise = null
+            return token
+          })
+          .catch((err) => {
+            refreshPromise = null
+            clearTotemSession()
+            throw err
+          })
+      }
+
+      try {
+        const token = await refreshPromise
+        if (token) {
+          retriableConfig.headers.Authorization = `Bearer ${token}`
+          return apiClient(retriableConfig)
+        }
+      } catch {
+        return Promise.reject(error)
       }
     }
 
