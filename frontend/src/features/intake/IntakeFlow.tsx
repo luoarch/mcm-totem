@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { FormProvider, useForm } from 'react-hook-form'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { FormProvider, useForm, useWatch, type Resolver } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
-import { Alert, Stack } from '@mui/material'
+import { Alert, Box, Button, Stack } from '@mui/material'
 import { KioskLayout } from '../../layouts/KioskLayout'
 import {
   ConfirmationStep,
@@ -10,10 +10,12 @@ import {
   ForeignStep,
   ModeStep,
   PatientStep,
+  PriorityStep,
   ReviewStep,
   ReasonStep,
   StepNavigation,
   SpecialtyStep,
+  WelcomeStep,
 } from './components'
 import {
   DEFAULT_FORM_VALUES,
@@ -23,11 +25,13 @@ import {
 import type {
   ConfirmationSnapshot,
   IntakeFormValues,
-  IntakeSubmission,
   IntakeStepDefinition,
+  IntakeStepKey,
+  IntakeSubmissionCpf,
 } from './types'
 import { intakeSchema } from './validation'
 import {
+  createPatient,
   listConvenios,
   listSpecialties,
   lookupPatients,
@@ -38,273 +42,99 @@ import { useInactivityTimeout } from '../../core/useInactivityTimeout'
 import { INACTIVITY_TIMEOUT_MS } from '../../config/app'
 import { SURVEY_FORM_URL } from '../../config/survey'
 import { createMaskedIdentifier } from '../../utils/identifier'
+import { logError } from '../../utils/logger'
 
 type IntakeFlowProps = {
-  onComplete?: (payload: IntakeSubmission) => Promise<void> | void
+  onComplete?: (payload: IntakeSubmissionCpf) => Promise<void> | void
 }
 
 type LookupStatus = 'idle' | 'loading' | 'success' | 'error'
+
+const STATIC_DATA_REQUIRED_STEPS = new Set<IntakeStepKey>([
+  'coverage',
+  'specialty',
+  'reason',
+  'review',
+  'confirmation',
+])
+
+const STATIC_DATA_CONTENT_STEPS = new Set<IntakeStepKey>(['coverage', 'specialty'])
 
 export function IntakeFlow({ onComplete }: IntakeFlowProps) {
   const methods = useForm<IntakeFormValues>({
     mode: 'onChange',
     defaultValues: DEFAULT_FORM_VALUES,
-    resolver: yupResolver(intakeSchema),
+    resolver: yupResolver(intakeSchema) as unknown as Resolver<IntakeFormValues>,
   })
-  const intakeMode = methods.watch('intakeMode')
-  const patientSelection = methods.watch('patientSelection')
-  const existingPatientId = methods.watch('existingPatientId')
-  const patientName = methods.watch('patientName')
-  const foreignName = methods.watch('foreignName')
-  const coverageType = methods.watch('coverageType')
-  const convenioId = methods.watch('convenioId')
-  const specialtyId = methods.watch('specialtyId')
+  const [
+    intakeMode,
+    patientSelection,
+    existingPatientId,
+    patientName,
+    foreignName,
+    coverageType,
+    convenioId,
+    specialtyId,
+  ] = useWatch({
+    control: methods.control,
+    name: [
+      'intakeMode',
+      'patientSelection',
+      'existingPatientId',
+      'patientName',
+      'foreignName',
+      'coverageType',
+      'convenioId',
+      'specialtyId',
+    ],
+  }) as [
+      IntakeFormValues['intakeMode'],
+      IntakeFormValues['patientSelection'],
+      IntakeFormValues['existingPatientId'],
+      IntakeFormValues['patientName'],
+      IntakeFormValues['foreignName'],
+      IntakeFormValues['coverageType'],
+      IntakeFormValues['convenioId'],
+      IntakeFormValues['specialtyId'],
+    ]
 
   const [activeStep, setActiveStep] = useState(0)
   const [lookupStatus, setLookupStatus] = useState<LookupStatus>('idle')
   const [matches, setMatches] = useState<PatientMatch[]>([])
   const [convenios, setConvenios] = useState<PayerOption[]>([])
   const [specialties, setSpecialties] = useState<SpecialtyOption[]>([])
+  const [defaultConvenioId, setDefaultConvenioId] = useState<string | null>(null)
+  const [staticDataError, setStaticDataError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [wasResetByTimeout, setWasResetByTimeout] = useState(false)
   const [confirmation, setConfirmation] = useState<ConfirmationSnapshot | null>(null)
+  const staticDataRequestId = useRef(0)
+  const lookupRequestId = useRef(0)
 
   const steps = useMemo<IntakeStepDefinition[]>(() => getIntakeSteps(intakeMode), [intakeMode])
   const stepDefinition = steps[activeStep] ?? steps[0]
-  const isLastStep = activeStep === steps.length - 1
+  const stepsCount = steps.length
+  const isLastStep = activeStep === stepsCount - 1
   const canGoBack = activeStep > 0
-
-  useEffect(() => {
-    let isMounted = true
-
-    const loadStaticData = async () => {
-      try {
-        const [payerOptions, specialtyOptions] = await Promise.all([
-          listConvenios(),
-          listSpecialties(),
-        ])
-        if (!isMounted) return
-        setConvenios(payerOptions)
-        setSpecialties(specialtyOptions)
-      } catch (error) {
-        console.error('Erro ao carregar dados iniciais', error)
-      }
-    }
-
-    loadStaticData()
-
-    return () => {
-      isMounted = false
-    }
-  }, [])
-
-  const performLookup = useCallback(async () => {
-    const { cpf, birthDate } = methods.getValues()
-    setLookupStatus('loading')
-    if (!cpf || !birthDate) {
-      setLookupStatus('idle')
-      return
-    }
-    try {
-      const results = await lookupPatients(cpf, birthDate)
-      setMatches(results)
-      setLookupStatus('success')
-      if (results.length > 0) {
-        methods.setValue('patientSelection', 'existing')
-        methods.setValue('existingPatientId', results[0]?.id, { shouldValidate: false })
-      } else {
-        methods.setValue('patientSelection', 'new')
-        methods.setValue('existingPatientId', undefined)
-      }
-    } catch (error) {
-      console.error('Falha ao consultar paciente', error)
-      setLookupStatus('error')
-      setMatches([])
-      methods.setValue('patientSelection', 'new')
-      methods.setValue('existingPatientId', undefined)
-    }
-  }, [methods])
-
-  useEffect(() => {
-    if (intakeMode === 'foreign') {
-      setMatches([])
-      setLookupStatus('idle')
-      methods.setValue('patientSelection', 'new', { shouldValidate: false })
-      methods.setValue('existingPatientId', undefined, { shouldValidate: false })
-      methods.setValue('cpf', '', { shouldValidate: false })
-      methods.setValue('birthDate', '', { shouldValidate: false })
-    }
-
-    if (intakeMode === 'cpf') {
-      methods.setValue('foreignName', '', { shouldValidate: false })
-      methods.setValue('foreignBirthDate', '', { shouldValidate: false })
-      methods.setValue('foreignEmail', '', { shouldValidate: false })
-    }
-  }, [intakeMode, methods])
-
-  useEffect(() => {
-    if (activeStep >= steps.length) {
-      setActiveStep(Math.max(steps.length - 1, 0))
-    }
-  }, [steps, activeStep])
-
-  const handleTimeoutReset = useCallback(() => {
-    methods.reset(DEFAULT_FORM_VALUES)
-    setMatches([])
-    setLookupStatus('idle')
-    setActiveStep(0)
-    setSubmitError(null)
-    setIsSubmitting(false)
-    setWasResetByTimeout(true)
-    setConfirmation(null)
-  }, [methods])
-
-  const { resetTimer: resetInactivityTimer } = useInactivityTimeout({
-    timeoutMs: INACTIVITY_TIMEOUT_MS,
-    onTimeout: handleTimeoutReset,
-  })
-
-  const handleRetryLookup = () => {
-    resetInactivityTimer()
-    void performLookup()
-  }
-
-  const handleBack = () => {
-    resetInactivityTimer()
-    setSubmitError(null)
-    setWasResetByTimeout(false)
-    setActiveStep((prev) => Math.max(prev - 1, 0))
-  }
-
-  const handleSubmit = methods.handleSubmit(async (values) => {
-    resetInactivityTimer()
-    setIsSubmitting(true)
-    setSubmitError(null)
-    setWasResetByTimeout(false)
-    const payload: IntakeSubmission = {
-      intakeMode: values.intakeMode ?? 'cpf',
-      cpf: values.cpf,
-      birthDate: values.intakeMode === 'foreign' ? values.foreignBirthDate : values.birthDate,
-      patientId: values.patientSelection === 'existing' ? values.existingPatientId : undefined,
-      auditSelectionId:
-        values.patientSelection === 'existing' ? values.existingPatientId ?? null : null,
-      patientName:
-        values.intakeMode === 'foreign'
-          ? values.foreignName
-          : values.patientSelection === 'new'
-            ? values.patientName
-            : undefined,
-      foreignName: values.intakeMode === 'foreign' ? values.foreignName : undefined,
-      foreignBirthDate: values.intakeMode === 'foreign' ? values.foreignBirthDate : undefined,
-      foreignEmail:
-        values.intakeMode === 'foreign' ? values.foreignEmail?.trim() || null : null,
-      coverageType: values.coverageType,
-      convenioId: values.coverageType === 'convenio' ? values.convenioId ?? null : null,
-      specialtyId: values.specialtyId!,
-      reason: values.reason,
-      npsScore: values.npsScore,
-    }
-
-    try {
-      await submitIntake(payload)
-      if (onComplete) {
-        await onComplete(payload)
-      }
-      const resolvedPatientName =
-        values.intakeMode === 'foreign'
-          ? values.foreignName
-          : values.patientSelection === 'existing'
-            ? matches.find((item) => item.id === values.existingPatientId)?.name ??
-            values.patientName
-            : values.patientName
-
-      const summarySnapshot = {
-        patient: resolvedPatientName || summary.patient,
-        coverage: summary.coverage,
-        specialty:
-          specialties.find((item) => item.id === values.specialtyId)?.name ??
-          summary.specialty,
-      }
-
-      const maskedIdentifier = createMaskedIdentifier({
-        intakeMode: values.intakeMode ?? 'cpf',
-        name: summarySnapshot.patient,
-        cpf: values.cpf,
-        birthDate:
-          values.intakeMode === 'foreign' ? values.foreignBirthDate : values.birthDate,
-      })
-
-      setConfirmation({
-        maskedIdentifier,
-        submittedAt: new Date().toISOString(),
-        summary: summarySnapshot,
-        surveyUrl: SURVEY_FORM_URL || undefined,
-      })
-
-      setLookupStatus('idle')
-      setIsSubmitting(false)
-      setActiveStep((prev) => Math.min(prev + 1, steps.length - 1))
-      return
-    } catch (error) {
-      console.error('Erro durante envio do atendimento', error)
-      setSubmitError('Não foi possível registrar o atendimento. Tente novamente ou chame um atendente.')
-      setIsSubmitting(false)
-    }
-  })
-
-  const handleFinish = () => {
-    resetInactivityTimer()
-    setConfirmation(null)
-    setWasResetByTimeout(false)
-    setSubmitError(null)
-    methods.reset(DEFAULT_FORM_VALUES)
-    setMatches([])
-    setLookupStatus('idle')
-    setIsSubmitting(false)
-    setActiveStep(0)
-  }
-
-  const handleNext = async () => {
-    resetInactivityTimer()
-    setSubmitError(null)
-    setWasResetByTimeout(false)
-    const fields = STEP_FIELD_MAP[stepDefinition.key]
-    const isValid = await methods.trigger(fields)
-    if (!isValid) {
-      return
-    }
-
-    if (stepDefinition.key === 'document' && intakeMode === 'cpf') {
-      await performLookup()
-    }
-
-    if (stepDefinition.key === 'review') {
-      await handleSubmit()
-      return
-    }
-
-    if (stepDefinition.key === 'confirmation') {
-      handleFinish()
-      return
-    }
-
-    setActiveStep((prev) => Math.min(prev + 1, steps.length - 1))
-  }
+  const isStaticDataReady = !staticDataError && convenios.length > 0 && specialties.length > 0
+  const isStaticDataLoading = !staticDataError && (convenios.length === 0 || specialties.length === 0)
+  const shouldBlockForStaticData =
+    STATIC_DATA_REQUIRED_STEPS.has(stepDefinition.key) && !isStaticDataReady
+  const contentBlockedByStaticData =
+    STATIC_DATA_CONTENT_STEPS.has(stepDefinition.key) && !isStaticDataReady
 
   const summary = useMemo(() => {
     const patientLabel =
       intakeMode === 'foreign'
         ? foreignName || 'Cadastro estrangeiro'
         : patientSelection === 'existing'
-          ? matches.find((item) => item.id === existingPatientId)?.name ??
-          'Paciente selecionado'
+          ? matches.find((item) => item.id === existingPatientId)?.name ?? 'Paciente selecionado'
           : patientName || 'Novo cadastro'
 
     const coverageLabel =
       coverageType === 'convenio'
-        ? `Convênio: ${convenios.find((item) => item.id === convenioId)?.name ??
-        'Selecionado anteriormente'
+        ? `Convênio: ${convenios.find((item) => item.id === convenioId)?.name ?? 'Selecionado anteriormente'
         }`
         : 'Particular'
 
@@ -330,7 +160,332 @@ export function IntakeFlow({ onComplete }: IntakeFlowProps) {
     specialtyId,
   ])
 
-  const aside = null
+  const fetchStaticData = useCallback(async () => {
+    const requestId = ++staticDataRequestId.current
+    setStaticDataError(null)
+    try {
+      const [payerOptions, specialtyOptions] = await Promise.all([listConvenios(), listSpecialties()])
+      if (staticDataRequestId.current !== requestId) {
+        return
+      }
+      setConvenios(payerOptions)
+      const resolvedDefault =
+        payerOptions.find((option) => option.name.toLowerCase().includes('particular'))?.id ??
+        payerOptions[0]?.id ??
+        null
+      setDefaultConvenioId(resolvedDefault)
+      setSpecialties(specialtyOptions)
+    } catch (error) {
+      if (staticDataRequestId.current !== requestId) {
+        return
+      }
+      logError('Erro ao carregar dados iniciais', error)
+      setStaticDataError('Não foi possível carregar convênios e especialidades. Tente novamente.')
+    }
+  }, [])
+
+  useEffect(() => {
+    void fetchStaticData()
+    return () => {
+      staticDataRequestId.current += 1
+    }
+  }, [fetchStaticData])
+
+  const handleRetryStaticData = useCallback(() => {
+    void fetchStaticData()
+  }, [fetchStaticData])
+
+  const performLookup = useCallback(async () => {
+    const { cpf, birthDate, lookupFirstName } = methods.getValues()
+    const requestId = ++lookupRequestId.current
+    setLookupStatus('loading')
+    if (!cpf || !birthDate || !lookupFirstName) {
+      if (lookupRequestId.current === requestId) {
+        setLookupStatus('idle')
+      }
+      return
+    }
+    try {
+      const results = await lookupPatients(cpf, birthDate, lookupFirstName)
+      if (lookupRequestId.current !== requestId) {
+        return
+      }
+      setMatches(results)
+      setLookupStatus('success')
+      if (results.length > 0) {
+        methods.setValue('patientSelection', 'existing')
+        methods.setValue('existingPatientId', results[0]?.id, { shouldValidate: false })
+      } else {
+        methods.setValue('patientSelection', 'new')
+        methods.setValue('existingPatientId', undefined)
+      }
+    } catch (error) {
+      if (lookupRequestId.current !== requestId) {
+        return
+      }
+      logError('Falha ao consultar paciente', error)
+      setLookupStatus('error')
+      setMatches([])
+      methods.setValue('patientSelection', 'new')
+      methods.setValue('existingPatientId', undefined)
+    }
+  }, [methods])
+
+  useEffect(() => {
+    if (intakeMode === 'foreign') {
+      setMatches([])
+      setLookupStatus('idle')
+      methods.setValue('patientSelection', 'new', { shouldValidate: false })
+      methods.setValue('existingPatientId', undefined, { shouldValidate: false })
+      methods.setValue('cpf', '', { shouldValidate: false })
+      methods.setValue('birthDate', '', { shouldValidate: false })
+      methods.setValue('lookupFirstName', '', { shouldValidate: false })
+    }
+
+    if (intakeMode === 'cpf') {
+      methods.setValue('foreignName', '', { shouldValidate: false })
+      methods.setValue('foreignBirthDate', '', { shouldValidate: false })
+      methods.setValue('foreignEmail', '', { shouldValidate: false })
+    }
+  }, [intakeMode, methods])
+
+  useEffect(() => {
+    if (activeStep >= steps.length) {
+      setActiveStep(Math.max(steps.length - 1, 0))
+    }
+  }, [steps, activeStep])
+
+  useEffect(() => {
+    if (coverageType !== 'particular' || !defaultConvenioId) {
+      return
+    }
+    const isValidConvenio = convenios.some((c) => c.id === defaultConvenioId)
+    if (!isValidConvenio) {
+      return
+    }
+    const currentConvenio = methods.getValues('convenioId')
+    if (!currentConvenio) {
+      methods.setValue('convenioId', defaultConvenioId, { shouldValidate: false })
+    }
+  }, [coverageType, defaultConvenioId, convenios, methods])
+
+  const handleTimeoutReset = useCallback(() => {
+    window.location.reload()
+  }, [])
+
+  const { resetTimer: resetInactivityTimer } = useInactivityTimeout({
+    timeoutMs: INACTIVITY_TIMEOUT_MS,
+    onTimeout: handleTimeoutReset,
+  })
+
+  const handleRetryLookup = useCallback(() => {
+    resetInactivityTimer()
+    void performLookup()
+  }, [performLookup, resetInactivityTimer])
+
+  useEffect(() => {
+    return () => {
+      lookupRequestId.current += 1
+    }
+  }, [])
+
+  const handleBack = () => {
+    resetInactivityTimer()
+    setSubmitError(null)
+    setWasResetByTimeout(false)
+    setActiveStep((prev) => Math.max(prev - 1, 0))
+  }
+
+  const onSubmitValid = useCallback(
+    async (values: IntakeFormValues) => {
+      resetInactivityTimer()
+      setIsSubmitting(true)
+      setSubmitError(null)
+      setWasResetByTimeout(false)
+
+      try {
+        if (values.intakeMode === 'foreign') {
+          const summarySnapshot = {
+            patient: values.foreignName || summary.patient,
+            coverage: summary.coverage,
+            specialty: summary.specialty,
+          }
+
+          const maskedIdentifier = createMaskedIdentifier({
+            intakeMode: 'foreign',
+            name: values.foreignName,
+            birthDate: values.foreignBirthDate,
+          })
+
+          setConfirmation({
+            maskedIdentifier,
+            submittedAt: new Date().toISOString(),
+            summary: summarySnapshot,
+            surveyUrl: SURVEY_FORM_URL || undefined,
+            manualAssistance: true,
+          })
+
+          setLookupStatus('idle')
+          setIsSubmitting(false)
+          setActiveStep((prev) => Math.min(prev + 1, stepsCount - 1))
+          return
+        }
+
+        if (!values.specialtyId) {
+          setSubmitError('Selecione a especialidade.')
+          setIsSubmitting(false)
+          return
+        }
+
+        // If creating a new patient, call the patient creation API first
+        let finalPatientId =
+          values.patientSelection === 'existing' ? values.existingPatientId : undefined
+
+        if (
+          values.intakeMode === 'cpf' &&
+          values.patientSelection === 'new' &&
+          values.patientName &&
+          values.phone
+        ) {
+          const convenioCode = values.convenioId ?? defaultConvenioId ?? ''
+          try {
+            finalPatientId = await createPatient(
+              values.cpf,
+              values.patientName,
+              values.birthDate,
+              values.phone,
+              convenioCode,
+              values.socialName && values.socialName.trim() !== '' ? values.socialName.trim() : undefined,
+            )
+          } catch (error) {
+            logError('Erro ao criar paciente', error)
+            setSubmitError(
+              'Não foi possível criar o cadastro do paciente. Verifique os dados e tente novamente.',
+            )
+            setIsSubmitting(false)
+            return
+          }
+        }
+
+        if (!finalPatientId) {
+          setSubmitError('Não foi possível identificar o paciente selecionado.')
+          setIsSubmitting(false)
+          return
+        }
+
+        const payload: IntakeSubmissionCpf = {
+          intakeMode: 'cpf',
+          cpf: values.cpf,
+          birthDate: values.birthDate,
+          patientId: finalPatientId,
+          coverageType: values.coverageType,
+          convenioId:
+            values.coverageType === 'convenio'
+              ? values.convenioId ?? null
+              : defaultConvenioId ?? null,
+          specialtyId: values.specialtyId,
+          reason: values.reason,
+          npsScore: values.npsScore,
+          isPriority: values.isPriority,
+          patientName: values.patientSelection === 'new' ? values.patientName : undefined,
+          socialName:
+            values.patientSelection === 'new' && values.socialName && values.socialName.trim() !== ''
+              ? values.socialName.trim()
+              : undefined,
+          phone: values.patientSelection === 'new' ? values.phone : undefined,
+        }
+
+        await submitIntake(payload)
+        if (onComplete) {
+          await onComplete(payload)
+        }
+        const resolvedPatientName =
+          values.patientSelection === 'existing'
+            ? matches.find((item) => item.id === values.existingPatientId)?.name ?? values.patientName
+            : values.patientSelection === 'new'
+              ? values.patientName
+              : values.foreignName
+
+        const summarySnapshot = {
+          patient: resolvedPatientName || summary.patient,
+          coverage: summary.coverage,
+          specialty:
+            specialties.find((item) => item.id === values.specialtyId)?.name ?? summary.specialty,
+        }
+
+        const maskedIdentifier = createMaskedIdentifier({
+          intakeMode: values.intakeMode ?? 'cpf',
+          name: summarySnapshot.patient,
+          cpf: values.cpf,
+          birthDate: values.birthDate,
+        })
+
+        setConfirmation({
+          maskedIdentifier,
+          submittedAt: new Date().toISOString(),
+          summary: summarySnapshot,
+          surveyUrl: SURVEY_FORM_URL || undefined,
+        })
+
+        setLookupStatus('idle')
+        setIsSubmitting(false)
+        setActiveStep((prev) => Math.min(prev + 1, stepsCount - 1))
+      } catch (error) {
+        logError('Erro durante envio do atendimento', error)
+        setSubmitError(
+          'Não foi possível registrar o atendimento. Tente novamente ou chame um atendente.',
+        )
+        setIsSubmitting(false)
+      }
+    },
+    [defaultConvenioId, matches, onComplete, resetInactivityTimer, specialties, stepsCount, summary],
+  )
+
+  const submitForm = useCallback(() => methods.handleSubmit(onSubmitValid)(), [methods, onSubmitValid])
+
+  const handleFinish = () => {
+    resetInactivityTimer()
+    setConfirmation(null)
+    setWasResetByTimeout(false)
+    setSubmitError(null)
+    methods.reset(DEFAULT_FORM_VALUES)
+    setMatches([])
+    setLookupStatus('idle')
+    setIsSubmitting(false)
+    setActiveStep(0)
+  }
+
+  const handleWelcomeStart = useCallback(() => {
+    resetInactivityTimer()
+    setActiveStep(1)
+  }, [resetInactivityTimer])
+
+  const handleNext = async () => {
+    resetInactivityTimer()
+    setSubmitError(null)
+    setWasResetByTimeout(false)
+    const fields = STEP_FIELD_MAP[stepDefinition.key]
+    const isValid = await methods.trigger(fields)
+    if (!isValid) {
+      return
+    }
+
+    if (stepDefinition.key === 'document' && intakeMode === 'cpf') {
+      await performLookup()
+    }
+
+    if (stepDefinition.key === 'review') {
+      await submitForm()
+      return
+    }
+
+    if (stepDefinition.key === 'confirmation') {
+      handleFinish()
+      return
+    }
+
+    setActiveStep((prev) => Math.min(prev + 1, steps.length - 1))
+  }
 
   const footer = (
     <Stack spacing={2} width="100%">
@@ -339,24 +494,27 @@ export function IntakeFlow({ onComplete }: IntakeFlowProps) {
           {submitError}
         </Alert>
       ) : null}
-      <StepNavigation
-        canGoBack={canGoBack && stepDefinition.key !== 'confirmation'}
-        isLastStep={isLastStep}
-        onBack={handleBack}
-        onNext={handleNext}
-        isSubmitting={isSubmitting}
-        nextLabel={
-          stepDefinition.key === 'review'
-            ? 'Registrar atendimento'
-            : stepDefinition.key === 'confirmation'
-              ? 'Encerrar atendimento'
-              : undefined
-        }
-        nextDisabled={
-          (stepDefinition.key === 'mode' && !intakeMode) ||
-          (stepDefinition.key === 'confirmation' && !confirmation)
-        }
-      />
+      {stepDefinition.key !== 'welcome' ? (
+        <StepNavigation
+          canGoBack={canGoBack && stepDefinition.key !== 'confirmation'}
+          isLastStep={isLastStep}
+          onBack={handleBack}
+          onNext={handleNext}
+          isSubmitting={isSubmitting}
+          nextLabel={
+            stepDefinition.key === 'review'
+              ? 'Registrar atendimento'
+              : stepDefinition.key === 'confirmation'
+                ? 'Ir para sala de espera'
+                : undefined
+          }
+          nextDisabled={
+            (stepDefinition.key === 'mode' && !intakeMode) ||
+            (stepDefinition.key === 'confirmation' && !confirmation) ||
+            shouldBlockForStaticData
+          }
+        />
+      ) : null}
     </Stack>
   )
 
@@ -364,8 +522,30 @@ export function IntakeFlow({ onComplete }: IntakeFlowProps) {
     resetInactivityTimer()
   }, [activeStep, resetInactivityTimer])
 
-  const stepContent = () => {
+  const currentStepContent = useMemo(() => {
+    if (contentBlockedByStaticData) {
+      const severity = staticDataError ? 'error' : 'info'
+      const message = staticDataError
+        ? 'Não foi possível carregar as opções necessárias.'
+        : 'Carregando opções, aguarde...'
+      const action = staticDataError ? (
+        <Button color="inherit" size="small" onClick={handleRetryStaticData}>
+          Tentar novamente
+        </Button>
+      ) : undefined
+
+      return (
+        <Alert severity={severity} action={action}>
+          {message}
+        </Alert>
+      )
+    }
+
     switch (stepDefinition.key) {
+      case 'welcome':
+        return <WelcomeStep onStart={handleWelcomeStart} />
+      case 'priority':
+        return <PriorityStep />
       case 'mode':
         return <ModeStep />
       case 'document':
@@ -393,16 +573,63 @@ export function IntakeFlow({ onComplete }: IntakeFlowProps) {
       default:
         return null
     }
+  }, [
+    confirmation,
+    contentBlockedByStaticData,
+    convenios,
+    handleRetryLookup,
+    handleRetryStaticData,
+    handleWelcomeStart,
+    lookupStatus,
+    matches,
+    specialties,
+    staticDataError,
+    stepDefinition.key,
+    summary,
+  ])
+
+  const displaySteps = useMemo(() => {
+    if (stepDefinition.key === 'welcome') {
+      return []
+    }
+    return steps.filter((step) => step.key !== 'welcome').map((step) => step.label)
+  }, [steps, stepDefinition.key])
+
+  const displayStepIndex = useMemo(() => {
+    if (stepDefinition.key === 'welcome') {
+      return -1
+    }
+    return activeStep - 1
+  }, [activeStep, stepDefinition.key])
+
+  const isWelcomeScreen = stepDefinition.key === 'welcome'
+
+  if (isWelcomeScreen) {
+    return (
+      <FormProvider {...methods}>
+        <Box
+          sx={{
+            height: '100vh',
+            width: '100vw',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: 'background.default',
+          }}
+        >
+          {currentStepContent}
+        </Box>
+      </FormProvider>
+    )
   }
 
   return (
     <FormProvider {...methods}>
       <KioskLayout
-        heading="Autoatendimento"
-        steps={steps.map((step) => step.label)}
-        stepIndex={activeStep}
+        heading="Clinica Exemplo"
+        steps={displaySteps}
+        stepIndex={displayStepIndex}
         footer={footer}
-        aside={aside}
       >
         <Stack spacing={{ xs: 3, md: 4 }}>
           {wasResetByTimeout ? (
@@ -411,7 +638,22 @@ export function IntakeFlow({ onComplete }: IntakeFlowProps) {
               segurança.
             </Alert>
           ) : null}
-          {stepContent()}
+          {staticDataError && !contentBlockedByStaticData ? (
+            <Alert
+              severity="error"
+              action={
+                <Button color="inherit" size="small" onClick={handleRetryStaticData}>
+                  Tentar novamente
+                </Button>
+              }
+            >
+              {staticDataError}
+            </Alert>
+          ) : null}
+          {isStaticDataLoading && !contentBlockedByStaticData ? (
+            <Alert severity="info">Carregando convênios e especialidades...</Alert>
+          ) : null}
+          {currentStepContent}
         </Stack>
       </KioskLayout>
     </FormProvider>

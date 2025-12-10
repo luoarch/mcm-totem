@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Alert, Button, Snackbar } from '@mui/material'
 import { useRegisterSW } from 'virtual:pwa-register/react'
+import { logError } from '../utils/logger'
 
 export function UpdateNotification() {
   const {
@@ -24,8 +25,8 @@ export function UpdateNotification() {
   }
 
   const handleUpdate = () => {
-    updateServiceWorker(true).catch((error) => {
-      console.error('Falha ao atualizar service worker', error)
+    updateServiceWorker(true).catch((error: unknown) => {
+      logError('Falha ao atualizar service worker', error)
     })
     handleClose()
   }

@@ -1,73 +1,119 @@
-# React + TypeScript + Vite
+# MC AutoAtendimento (Totem) – Documento de Requisitos + API (v1)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Objetivo e Escopo
 
-Currently, two official plugins are available:
+Permitir que o Totem execute o fluxo completo de **autoatendimento**: (1) login, (2) busca/criação de paciente, (3) seleção de convênio, (4) seleção de especialidade e (5) geração do atendimento (boletim). Não há gestão de fila, senhas ou códigos de espera — a jornada termina na criação do atendimento.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Ambiente
 
-## React Compiler
+- Base URL: `https://gestaosaude.mcinfor-saude.net.br`
+- Todas as chamadas autenticadas exigem `Authorization: Bearer <TOKEN>` obtido via login.
+- Ferramentas locais: `zsh` (shell padrão) e Node.js `>= 24`.
+- `Content-Type`:
+  - `application/x-www-form-urlencoded` para POST.
+  - Query params para GET.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Regras de Validação do Totem
 
-## Expanding the ESLint configuration
+- **CPF**: 11 dígitos numéricos (aplicar mascaramento apenas na UI).
+- **Celular**: apenas dígitos; preferir formato E.164 (`55DDDNUMERO`).
+- **Nome**:
+  - Busca: primeiro nome.
+  - Criação: nome completo.
+- **Data de nascimento**:
+  - Busca: `DD/MM/AAAA`.
+  - Criação: `ddmmyyyy`.
+- Ao receber múltiplos pacientes para o mesmo CPF, ordenar por `nropaciente desc` e selecionar o primeiro.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Fluxo Completo
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+1. **Login** (`POST /login/externo`)
+   - Body: `empresa`, `username`, `password`, `integracaowhatsapp=S`.
+   - Resposta contém `token` (JWT). Persistir durante a sessão e nunca logar sensíveis.
+2. **Buscar paciente** (`GET /pacientesautoage`)
+   - Params obrigatórios: `integracaowhatsapp=S`, `cpf`, `nasci`, `nome`.
+   - Recomendado: `autoagendamento=true`; opcional `celular`.
+   - Resposta inclui: `nropaciente`, `nome`, `cpf`, `nasci`, `celular`, `email`, `nomesocial` (opcional).
+   - Se lista vazia → seguir para convênios e criação.
+3. **Listar convênios** (`GET /convenios`)
+   - Params: `permiteagweb=S`, `integracaowhatsapp=S`, `codempresa` (usar `codacesso` do login ou valor acordado).
+   - Mostrar `nomefantasia` (fallback `razaosocial`). Salvar `convenioCode`.
+4. **Criar paciente** (`POST /pacientesautoage`) – somente se etapa 2 não encontrou paciente.
+   - Body: `cpf`, `nome`, `nasci`, `celular`, `convenio=convenioCode`, `integracaowhatsapp=S`, `nomesocial` (opcional).
+   - Sucesso (`ok=true`) retorna `nropac` → `patientId`.
+5. **Listar especialidades** (`GET /especialidades`)
+   - Params: `permiteagweb=S`, `integracaowhatsapp=S`, `codempresa`.
+   - Exibir `descricao`; salvar `especialidadeCode`.
+6. **Gerar atendimento** (`POST /atendimentoboletim`)
+   - Body: `autoagendamento=true`, `especialidade=especialidadeCode`, `convenio=convenioCode`, `nropaciente=patientId`, `tipo=e`, `integracaowhatsapp=S`.
+   - Considerar sucesso quando `type === "success"` e HTTP 200.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Pseudocódigo
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```ts
+const token = login()
+const pacientes = buscarPaciente({ cpf, nasci_dd_mm_yyyy, primeiroNome }, token)
+
+const convenios = listarConvenios(token)
+const convenioCode = userSelect(convenios, 'nomefantasia').convenio
+
+const patientId = pacientes.length
+  ? pacientes.sort((a, b) => b.nropaciente - a.nropaciente)[0].nropaciente
+  : criarPaciente({ cpf, nomeCompleto, nasci_ddmmyyyy, celular, convenioCode }, token).nropac
+
+const especialidades = listarEspecialidades(token)
+const especialidadeCode = userSelect(especialidades, 'descricao').especialidade
+
+gerarAtendimento({ patientId, convenioCode, especialidadeCode }, token)
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## UX Observações
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- As listas de convênios/especialidades podem ser extensas — oferecer busca textual e scroll/paginação eficiente.
+- Mensagens de erro devem ser curtas e não técnicas, com sugestão de ajuda humana quando necessário.
+- Monitorar expiração do token; ao detectar 401/403 refazer login automaticamente e repetir a chamada original.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Referência de cURL
+
+- Exemplos completos para cada endpoint foram capturados durante a análise e devem ser usados para debugar rapidamente chamadas isoladas (substituir credenciais sensíveis antes de compartilhar).
+
+## Testes automatizados (API)
+
+- `tests/api/live/*`: fluxo completo contra a API real (login → paciente → convênio → especialidade → atendimento).  
+- `tests/api/contract/*`: cenários de contrato/erro usando um servidor mock local (sem chamar a API externa).
+
+### Como rodar
+
+```bash
+# roda todos os projetos Playwright (live + contratos/mocks)
+yarn test:e2e
+
+# garante execuções seriais e roda apenas os testes live
+ALLOW_PROD_E2E=false TOTEM_FLOW_MODE=existing yarn test:e2e:live
 ```
+
+> ⚠️ Os testes live executam chamadas **reais**. O runner bloqueia domínios conhecidos de produção (`gestaosaude.mcinfor-saude.net.br`) a menos que `ALLOW_PROD_E2E=true` seja informado explicitamente.
+
+### Variáveis obrigatórias
+
+| Escopo | Variável | Observação |
+| --- | --- | --- |
+| Base | `TOTEM_BASE_URL` | Nunca usar ambiente de produção sem `ALLOW_PROD_E2E=true`. |
+| Login | `TOTEM_LOGIN_EMPRESA`, `TOTEM_LOGIN_USERNAME`, `TOTEM_LOGIN_PASSWORD` | Credenciais utilizadas em `/login/externo`. |
+| Convênio | `TOTEM_COMPANY_CODE` (opcional) | Quando ausente, o código retornado em `codacesso` no login é reutilizado. |
+
+### Modos de paciente (tests/api/live)
+
+| Variável | Função |
+| --- | --- |
+| `TOTEM_FLOW_MODE` | `existing` (default) ou `create`. |
+| `TOTEM_PATIENT_CPF`, `TOTEM_PATIENT_NASCI`, `TOTEM_PATIENT_FIRSTNAME` | Obrigatórias no modo `existing`. `NASCI` aceita `DD/MM/AAAA`, `ddmmyyyy` ou `YYYY-MM-DD`. |
+| `TOTEM_ALLOW_CREATE_MODE` | Precisa ser `true` para habilitar o modo `create` (evita criação acidental de pacientes). |
+| `TOTEM_CREATE_CPF`, `TOTEM_CREATE_FULLNAME`, `TOTEM_CREATE_BIRTHDATE`, `TOTEM_CREATE_PHONE` | Opcional no modo `create`. Quando ausentes e `TOTEM_ALLOW_CREATE_MODE=true`, dados válidos são gerados randomicamente e registrados como `generated`. |
+
+O teste adiciona anotações no relatório (`patientMode=existing-matched` / `create-created`) para facilitar auditoria de cada execução.
+
+### Observabilidade
+
+- Todos os requests logam método, endpoint, status e duração com redaction automático (`cpf`, `token`, `celular`, etc.).
+- Ao receber `401/403`, o cliente reloga uma única vez e falha se o segundo ciclo repetir o erro (evitando loops).

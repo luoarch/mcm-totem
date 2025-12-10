@@ -52,19 +52,6 @@ export function CoverageStep({ convenios }: CoverageStepProps) {
                   fontSize: '1.1rem',
                   fontWeight: 600,
                   borderRadius: 10,
-                  borderColor: 'rgba(255, 255, 255, 0.28)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                  transition: 'all 0.2s ease',
-                  '&.Mui-selected': {
-                    color: 'primary.contrastText',
-                    backgroundColor: 'rgba(26, 115, 232, 0.9)',
-                    boxShadow: '0 12px 24px rgba(26,115,232,0.28)',
-                    borderColor: 'rgba(26,115,232,0.35)',
-                  },
-                  '&:hover': {
-                    backgroundColor: 'rgba(26,115,232,0.12)',
-                    borderColor: 'rgba(26,115,232,0.2)',
-                  },
                 },
               }}
             >

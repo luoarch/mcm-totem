@@ -1,4 +1,5 @@
-import { defineConfig } from 'vite'
+/// <reference types="vitest" />
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
@@ -36,14 +37,36 @@ export default defineConfig({
       },
       workbox: isProduction
         ? {
-            globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
-            navigateFallback: '/index.html',
-          }
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
+          navigateFallback: '/index.html',
+        }
         : undefined,
       devOptions: {
         enabled: true,
         navigateFallback: 'index.html',
+        suppressWarnings: true,
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-hook-form'],
+          'vendor-mui': ['@mui/material', '@mui/icons-material', '@emotion/react', '@emotion/styled'],
+        },
+      },
+    },
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.ts',
+    exclude: [
+      'tests/api/**/*', // Playwright suites
+    ],
+    coverage: {
+      exclude: ['src/features/intake/constants.ts'],
+    },
+  },
 })

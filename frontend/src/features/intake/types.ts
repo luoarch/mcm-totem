@@ -8,6 +8,8 @@ import type {
 export type IntakeMode = 'cpf' | 'foreign'
 
 export type IntakeStepKey =
+  | 'welcome'
+  | 'priority'
   | 'mode'
   | 'document'
   | 'foreign'
@@ -22,11 +24,15 @@ export type PatientSelection = 'existing' | 'new'
 
 export type IntakeFormValues = {
   intakeMode: IntakeMode | null
+  isPriority: boolean
   cpf: string
   birthDate: string
+  lookupFirstName: string
   patientSelection: PatientSelection
   existingPatientId?: string
   patientName: string
+  socialName: string
+  phone: string
   foreignName: string
   foreignBirthDate: string
   foreignEmail?: string
@@ -48,22 +54,37 @@ export type IntakeResourceState = {
   specialties: SpecialtyOption[]
 }
 
-export type IntakeSubmission = {
-  intakeMode: IntakeMode
-  patientId?: string
-  patientName?: string
-  auditSelectionId?: string | null
+export type IntakeSubmissionCpf = {
+  intakeMode: 'cpf'
+  patientId: string
   cpf: string
   birthDate: string
-  foreignName?: string
-  foreignBirthDate?: string
-  foreignEmail?: string | null
   coverageType: CoverageType
-  convenioId?: string | null
+  convenioId: string | null
   specialtyId: string
   reason: string
-  npsScore?: number | null
+  npsScore: number | null
+  isPriority: boolean
+  patientName?: string
+  socialName?: string
+  phone?: string
 }
+
+export type IntakeSubmissionForeign = {
+  intakeMode: 'foreign'
+  foreignName: string
+  foreignBirthDate: string
+  foreignEmail?: string | null
+  coverageType: CoverageType
+  convenioId: string | null
+  specialtyId: string
+  reason: string
+  npsScore: number | null
+  isPriority: boolean
+  manualAssistance: true
+}
+
+export type IntakeSubmission = IntakeSubmissionCpf | IntakeSubmissionForeign
 
 export type ConfirmationSnapshot = {
   maskedIdentifier: string
@@ -74,5 +95,6 @@ export type ConfirmationSnapshot = {
     specialty: string
   }
   surveyUrl?: string
+  manualAssistance?: boolean
 }
 

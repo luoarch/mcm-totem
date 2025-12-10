@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { Box, Button, Paper, Stack, Typography } from '@mui/material'
+import { logError } from '../utils/logger'
 
 type AppErrorBoundaryProps = {
   children: ReactNode
@@ -23,7 +24,9 @@ export class AppErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Erro capturado pelo boundary', error, errorInfo)
+    logError('Erro capturado pelo boundary', error, {
+      componentStack: errorInfo.componentStack,
+    })
   }
 
   handleReload = () => {

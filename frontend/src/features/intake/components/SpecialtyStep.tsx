@@ -1,5 +1,5 @@
 import { useFormContext } from 'react-hook-form'
-import { Button, Grid, Stack, Typography } from '@mui/material'
+import { Box, Button, Grid, Stack, Typography } from '@mui/material'
 import {
   ChildCareRounded,
   FemaleRounded,
@@ -63,25 +63,35 @@ export function SpecialtyStep({ specialties }: SpecialtyStepProps) {
                   justifyContent: 'flex-start',
                   textAlign: 'left',
                   cursor: 'pointer',
-                  border: isSelected ? '2px solid' : '1px solid rgba(255,255,255,0.15)',
-                  borderColor: isSelected ? 'primary.main' : undefined,
-                  backgroundColor: isSelected
-                    ? 'rgba(26,115,232,0.1)'
-                    : 'rgba(255,255,255,0.06)',
-                  backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
-                  boxShadow: isSelected
-                    ? '0 4px 20px rgba(26,115,232,0.15)'
-                    : '0 2px 8px rgba(0,0,0,0.04)',
+                  position: 'relative',
+                  ...(isSelected
+                    ? {
+                      backgroundColor: '#1A73E8',
+                      color: 'rgba(255, 255, 255, 0.95)',
+                      border: '2px solid rgba(26, 115, 232, 0.6)',
+                      boxShadow: '0 8px 20px rgba(26,115,232,0.3)',
+                      '&:hover': {
+                        backgroundColor: '#0F4FAB',
+                        borderColor: '#0F4FAB',
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 12px 24px rgba(26,115,232,0.35)',
+                      },
+                    }
+                    : {
+                      backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                      color: 'text.primary',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
+                      backdropFilter: 'blur(12px)',
+                      WebkitBackdropFilter: 'blur(12px)',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                        borderColor: 'rgba(255, 255, 255, 0.4)',
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                      },
+                    }),
                   transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                  '&:hover': {
-                    transform: 'translateY(-1px)',
-                    borderColor: isSelected ? 'primary.dark' : 'rgba(26,115,232,0.3)',
-                    backgroundColor: isSelected
-                      ? 'rgba(26,115,232,0.15)'
-                      : 'rgba(255,255,255,0.1)',
-                    boxShadow: '0 6px 20px rgba(0,0,0,0.08)',
-                  },
                 }}
               >
                 <Stack spacing={0.8} sx={{ width: '100%' }}>
@@ -89,11 +99,23 @@ export function SpecialtyStep({ specialties }: SpecialtyStepProps) {
                     <Typography variant="subtitle1" component="span" sx={{ fontWeight: 600 }}>
                       {specialty.name}
                     </Typography>
-                    {isSelected ? (
-                      <Typography color="primary" sx={{ fontSize: '1.2rem', fontWeight: 600 }}>
-                        ✓
-                      </Typography>
-                    ) : null}
+                    {isSelected && (
+                      <Box
+                        sx={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: '50%',
+                          backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Typography sx={{ color: 'white', fontSize: '0.875rem', fontWeight: 700 }}>
+                          ✓
+                        </Typography>
+                      </Box>
+                    )}
                   </Stack>
                   {specialty.description ? (
                     <Typography

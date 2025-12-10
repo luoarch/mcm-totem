@@ -1,0 +1,47 @@
+# =============================================================================
+# MCM Totem - Docker Compose
+# =============================================================================
+# For local development, create a .env file with your credentials.
+# For production/CI, use GitHub Secrets passed as environment variables.
+#
+# Local development:
+#   1. Copy frontend/.env.example to frontend/.env
+#   2. Fill in your test credentials
+#   3. Run: docker-compose up --build
+#
+# Production (GitHub Actions):
+#   Environment variables are passed from GitHub Secrets.
+#   See .github/workflows/ for CI/CD configuration.
+# =============================================================================
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        # API Configuration (with sensible defaults)
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://gestaosaude.mcinfor-saude.net.br}
+        VITE_API_TIMEOUT_MS: ${VITE_API_TIMEOUT_MS:-10000}
+
+        # Totem Authentication
+        # For local dev: set in .env file
+        # For production: set via GitHub Secrets
+        VITE_TOTEM_USERNAME: ${VITE_TOTEM_USERNAME:-}
+        VITE_TOTEM_PASSWORD: ${VITE_TOTEM_PASSWORD:-}
+        VITE_TOTEM_EMPRESA: ${VITE_TOTEM_EMPRESA:-}
+
+        # Optional: Panel WebSocket URL (for queue display)
+        VITE_PANEL_WS_URL: ${VITE_PANEL_WS_URL:-}
+
+    ports:
+      - "80:8080"
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s

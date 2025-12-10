@@ -37,6 +37,11 @@ export function PatientStep({ matches, status, onRetry }: PatientStepProps) {
   const selectedPatientId = watch('existingPatientId')
 
   const hasMatches = matches.length > 0
+
+  const hasValidSocialName = (socialName: string | undefined | null): boolean => {
+    if (socialName === null || socialName === undefined) return false
+    return socialName.trim() !== ''
+  }
   const heading = useMemo(() => {
     if (status === 'loading') return 'Buscando paciente...'
     if (hasMatches) return 'Confirme o paciente'
@@ -111,15 +116,20 @@ export function PatientStep({ matches, status, onRetry }: PatientStepProps) {
                     py: { xs: 1.05, md: 1.25 },
                     px: { xs: 1.8, md: 2.3 },
                     borderRadius: 2,
-                    borderWidth: 1,
                     borderStyle: 'solid',
-                    borderColor: isSelected ? 'primary.main' : 'divider',
-                    backgroundColor: isSelected ? 'action.selected' : 'background.paper',
-                    boxShadow: 'none',
-                    transition: 'background-color 0.2s ease, border-color 0.2s ease',
+                    borderColor: isSelected ? 'rgba(26, 115, 232, 0.6)' : 'rgba(255, 255, 255, 0.3)',
+                    borderWidth: isSelected ? 2 : 1,
+                    backgroundColor: isSelected ? '#1A73E8' : 'rgba(255, 255, 255, 0.15)',
+                    backdropFilter: isSelected ? 'none' : 'blur(12px)',
+                    WebkitBackdropFilter: isSelected ? 'none' : 'blur(12px)',
+                    color: isSelected ? 'rgba(255, 255, 255, 0.95)' : 'text.primary',
+                    boxShadow: isSelected ? '0 4px 12px rgba(26,115,232,0.25)' : '0 2px 8px rgba(0,0,0,0.04)',
+                    transition: 'all 0.2s ease',
                     '&:hover': {
-                      backgroundColor: 'action.hover',
-                      borderColor: 'divider',
+                      backgroundColor: isSelected ? '#0F4FAB' : 'rgba(255, 255, 255, 0.2)',
+                      borderColor: isSelected ? '#0F4FAB' : 'rgba(255, 255, 255, 0.4)',
+                      transform: 'translateY(-1px)',
+                      boxShadow: isSelected ? '0 6px 16px rgba(26,115,232,0.3)' : '0 4px 12px rgba(0,0,0,0.08)',
                     },
                     '&:focus-visible': {
                       outline: '2px solid',
@@ -128,31 +138,31 @@ export function PatientStep({ matches, status, onRetry }: PatientStepProps) {
                     },
                   }}
                 >
-                  {isSelected ? (
-                    <Box
-                      sx={{
-                        position: 'absolute',
-                        left: 12,
-                        top: 8,
-                        bottom: 8,
-                        width: 3,
-                        borderRadius: 10,
-                        backgroundColor: 'primary.main',
-                        pointerEvents: 'none',
-                      }}
-                    />
-                  ) : null}
                   <ListItemText
                     primary={
-                      <Typography variant="subtitle1" component="span" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
-                        {match.name}
-                      </Typography>
+                      <Stack spacing={0.5}>
+                        <Typography variant="subtitle1" component="span" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
+                          {match.name}
+                        </Typography>
+                        {hasValidSocialName(match.socialName) ? (
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: isSelected ? 'rgba(255, 255, 255, 0.9)' : 'text.secondary',
+                              fontStyle: 'italic',
+                              lineHeight: 1.2,
+                            }}
+                          >
+                            Nome social: {match.socialName?.trim()}
+                          </Typography>
+                        ) : null}
+                      </Stack>
                     }
                     secondary={
                       <Typography
                         variant="body2"
-                        color="text.secondary"
                         sx={{
+                          color: isSelected ? 'rgba(255, 255, 255, 0.8)' : 'text.secondary',
                           display: 'flex',
                           columnGap: 1,
                           rowGap: 0.5,
@@ -169,9 +179,21 @@ export function PatientStep({ matches, status, onRetry }: PatientStepProps) {
                     sx={{ mr: 1.5, ml: 0.5 }}
                   />
                   {isSelected ? (
-                    <Typography variant="caption" color="primary.main" sx={{ fontWeight: 600 }}>
-                      ✓ Selecionado
-                    </Typography>
+                    <Box
+                      sx={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: '50%',
+                        backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Typography sx={{ color: 'white', fontSize: '0.875rem', fontWeight: 700 }}>
+                        ✓
+                      </Typography>
+                    </Box>
                   ) : null}
                 </ListItem>
               )
@@ -187,16 +209,22 @@ export function PatientStep({ matches, status, onRetry }: PatientStepProps) {
                 py: { xs: 1.05, md: 1.25 },
                 px: { xs: 1.8, md: 2.3 },
                 borderRadius: 2,
-                borderWidth: 1,
                 borderStyle: 'dashed',
-                borderColor: patientSelection === 'new' ? 'primary.main' : 'divider',
+                borderColor: patientSelection === 'new' ? 'rgba(26, 115, 232, 0.6)' : 'rgba(255, 255, 255, 0.3)',
+                borderWidth: patientSelection === 'new' ? 2 : 1,
                 backgroundColor:
-                  patientSelection === 'new' ? 'action.selected' : 'background.paper',
+                  patientSelection === 'new' ? '#1A73E8' : 'rgba(255, 255, 255, 0.15)',
+                backdropFilter: patientSelection === 'new' ? 'none' : 'blur(12px)',
+                WebkitBackdropFilter: patientSelection === 'new' ? 'none' : 'blur(12px)',
+                color: patientSelection === 'new' ? 'rgba(255, 255, 255, 0.95)' : 'text.primary',
                 cursor: 'pointer',
-                transition: 'background-color 0.2s ease, border-color 0.2s ease',
+                boxShadow: patientSelection === 'new' ? '0 4px 12px rgba(26,115,232,0.25)' : '0 2px 8px rgba(0,0,0,0.04)',
+                transition: 'all 0.2s ease',
                 '&:hover': {
-                  backgroundColor: 'action.hover',
-                  borderColor: 'divider',
+                  backgroundColor: patientSelection === 'new' ? '#0F4FAB' : 'rgba(255, 255, 255, 0.2)',
+                  borderColor: patientSelection === 'new' ? '#0F4FAB' : 'rgba(255, 255, 255, 0.4)',
+                  transform: 'translateY(-1px)',
+                  boxShadow: patientSelection === 'new' ? '0 6px 16px rgba(26,115,232,0.3)' : '0 4px 12px rgba(0,0,0,0.08)',
                 },
                 '&:focus-visible': {
                   outline: '2px solid',
@@ -220,23 +248,55 @@ export function PatientStep({ matches, status, onRetry }: PatientStepProps) {
       ) : null}
 
       {(patientSelection === 'new' || (!hasMatches && status !== 'loading')) && (
-        <Controller
-          name="patientName"
-          control={control}
-          render={({ field, fieldState }) => (
-            <TextField
-              {...field}
-              label="Nome completo do paciente"
-              placeholder="Nome e sobrenome"
-              autoFocus={!hasMatches}
-              error={Boolean(fieldState.error)}
-              helperText={fieldState.error?.message ?? ' '}
-              fullWidth
-              size="medium"
-              sx={{ maxWidth: 560 }}
-            />
-          )}
-        />
+        <Stack spacing={2} sx={{ width: '100%', maxWidth: 560 }}>
+          <Controller
+            name="patientName"
+            control={control}
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                label="Nome completo do paciente"
+                placeholder="Nome e sobrenome"
+                autoFocus={!hasMatches}
+                error={Boolean(fieldState.error)}
+                helperText={fieldState.error?.message ?? ' '}
+                fullWidth
+                size="medium"
+              />
+            )}
+          />
+          <Controller
+            name="socialName"
+            control={control}
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                label="Nome social (opcional)"
+                placeholder="Nome social"
+                error={Boolean(fieldState.error)}
+                helperText={fieldState.error?.message ?? ' '}
+                fullWidth
+                size="medium"
+              />
+            )}
+          />
+          <Controller
+            name="phone"
+            control={control}
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                label="Telefone celular"
+                placeholder="(11) 99999-9999"
+                type="tel"
+                error={Boolean(fieldState.error)}
+                helperText={fieldState.error?.message ?? ' '}
+                fullWidth
+                size="medium"
+              />
+            )}
+          />
+        </Stack>
       )}
     </Stack>
   )
